@@ -1,3 +1,6 @@
 #!/bin/bash
 
-erl -setcookie ciacho -sname ds -pa apps/*/ebin -s storage_core_srv start_link
+COOKIE=ciacho
+NAME=ds
+
+erl -setcookie $COOKIE -sname $NAME -pa apps/shared/ebin apps/*/ebin -s storage_core_srv start_link

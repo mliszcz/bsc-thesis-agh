@@ -1,3 +1,6 @@
 #!/bin/bash
 
-erl -setcookie ciacho -sname client -pa apps/storage_client/ebin
+COOKIE=ciacho
+NAME=client
+
+erl -setcookie $COOKIE -sname $NAME -pa apps/shared/ebin apps/storage_client/ebin
