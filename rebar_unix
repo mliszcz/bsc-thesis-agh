@@ -1,0 +1,4 @@
+#!/bin/bash
+
+cp rebar_bin_unix rebar
+./rebar "$@"
