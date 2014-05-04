@@ -22,10 +22,10 @@ start_link() ->
 	gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
 stop() ->
-	gen_server:cast(?MODULE, stop).
+	gen_server:cast({local, ?SERVER}, stop).
 
 echo() ->
-	gen_server:call(?MODULE, none).
+	gen_server:call({local, ?SERVER}, none).
 
 %% ------------------------------------------------------------------
 %% gen_server Function Definitions
