@@ -37,6 +37,7 @@ start() ->
  handle_request(Sock) ->
  	{ok, {http_request, Method, Path, Version}}=gen_tcp:recv(Sock, 0),
  	case (Method) of
+ 		'PUT' -> handle_create_file(Sock);
  		'POST' -> handle_post(Sock);
  		_ -> send_unsupported_error(Sock)
  	end.
@@ -44,14 +45,25 @@ start() ->
  get_content_length(Sock) ->
  	case gen_tcp:recv(Sock, 0, 60000) of
 		{ok, {http_header, _, 'Content-Length', _, Length}} -> list_to_integer(Length);
-		{ok, {http_header, _, Header, _, _}}  -> get_content_length(Sock)
+		{ok, {http_header, _, Header, _, Value}}  ->
+			io:format("Header ~w got value ~s~n", [Header, Value]),
+			get_content_length(Sock)
 	end.
 
  get_body(Sock, Length) ->
 	case gen_tcp:recv(Sock, 0) of
-		{ok, http_eoh} ->inet:setopts(Sock, [{packet, raw}]),{ok,Body}=gen_tcp:recv(Sock, Length),Body;
+		{ok, http_eoh} ->
+			inet:setopts(Sock, [{packet, raw}]),
+			{ok,Body}=gen_tcp:recv(Sock, Length),
+			Body;
 		_ -> get_body(Sock, Length)
 	end.
+
+handle_create_file(Sock) ->
+	Length=get_content_length(Sock),
+	PostBody=get_body(Sock, Length),
+	io:fwrite(PostBody),
+	send_accept(Sock).
 
  handle_post(Sock) ->
 	Length=get_content_length(Sock),
