@@ -1,0 +1,12 @@
+{application, storage_http,
+ [
+  {description, ""},
+  {vsn, "1"},
+  {registered, []},
+  {applications, [
+                  kernel,
+                  stdlib
+                 ]},
+  {mod, { storage_http_srv, []}},
+  {env, []}
+ ]}.
