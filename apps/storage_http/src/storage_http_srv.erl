@@ -5,27 +5,6 @@
 -export([start/0, handle_request/1]).
 -define(TIMEOUT, 60000).
 
-% start() ->
-% 	spawn(fun () -> {ok, Sock} = gen_tcp:listen(8081, [{active, false}]), 
-% 	loop(Sock) end).
-
-% loop(Sock) ->
-% 	{ok, Conn} = gen_tcp:accept(Sock),
-% 	Handler = spawn(fun () -> handle(Conn) end),
-% 	gen_tcp:controlling_process(Conn, Handler),
-% 	loop(Sock).
-
-% handle(Conn) ->
-% 	gen_tcp:send(Conn, response("Hello World")),
-% 	gen_tcp:close(Conn).
-
-% response(Str) ->
-% 	B = iolist_to_binary(Str),
-% 	iolist_to_binary(
-% 		io_lib:fwrite(
-% 		"HTTP/1.0 200 OK\nContent-Type: text/html\nContent-Length: ~p\n\n~s",
-% 		[size(B), B])).
-
 start() ->
 	start(8081).
 
@@ -41,7 +20,8 @@ start() ->
  handle_request(Sock) ->
  	{ok, {http_request, Method, {_, Path}, _Version}} = gen_tcp:recv(Sock, 0),
  	case (Method) of
- 		'PUT' -> handle_write_file(Sock, Path);
+ 		'PUT' -> handle_put_file(Sock, Path);
+ 		'GET' -> handle_get_file(Sock, Path);
  		_ -> send_unsupported_error(Sock)
  	end.
 
@@ -56,13 +36,21 @@ fetch_body(Sock, Length) ->
 	{ok, Body} = gen_tcp:recv(Sock, Length),
 	Body.
 
-handle_write_file(Sock, Path) ->
+handle_put_file(Sock, Path) ->
 	Headers = fetch_headers(Sock, dict:new()),
 	Length = dict:fetch('Content-Length', Headers),
 	RawData = fetch_body(Sock, list_to_integer(Length)),
 	storage_client_api:request_create(Path, list_to_binary(RawData)),
 	io:format("writing file ~s~n", [Path]),
 	send_accept(Sock).
+
+handle_get_file(Sock, Path) ->
+	{ok, RawData} = storage_client_api:request_read(Path),
+	send_binary(Sock, RawData).
+
+send_binary(Sock, RawData) ->
+	StrData = binary_to_list(RawData),
+	gen_tcp:send(Sock, iolist_to_binary(io_lib:fwrite("HTTP/1.0 200 OK\r\nContent-Length: ~p\r\n\r\n~s", [length(StrData), StrData]))).
 
  send_accept(Sock) ->
 	gen_tcp:send(Sock, "HTTP/1.1 202 Accepted\r\nConnection: close\r\nContent-Type: text/html; charset=UTF-8\r\nCache-Control: no-cache\r\n\r\n"),

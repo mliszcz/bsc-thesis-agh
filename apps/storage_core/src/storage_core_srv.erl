@@ -1,3 +1,6 @@
+%% @author Michal Liszcz
+%% @doc Storage Server core module
+
 -module(storage_core_srv).
 -include("shared.hrl").
 -behaviour(gen_server).
