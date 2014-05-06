@@ -1,2 +1,6 @@
 
-curl -XPUT -H "Moj-Hdr: moj val" --data-binary @run_server.sh localhost:8081/path/to/file/run_server.sh
+if [ -n "$2" ]; then
+	curl -XPUT --data-binary @"$1" localhost:8081/"$2"
+else
+	echo "usage: $0 local_file virtual_path";
+fi
