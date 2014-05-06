@@ -1,5 +1,6 @@
 -module(storage_http_srv).
 -export([start/0, handle_request/1]).
+-define(TIMEOUT, 60000).
 
 % start() ->
 % 	spawn(fun () -> {ok, Sock} = gen_tcp:listen(8081, [{active, false}]), 
@@ -26,48 +27,37 @@ start() ->
 	start(8081).
 
  start(Port)->
-	{ok, ListenSock}=gen_tcp:listen(Port, [list,{active, false},{packet,http}]),
+	{ok, ListenSock} = gen_tcp:listen(Port, [list,{active, false},{packet,http}]),
 	loop(ListenSock).
  
  loop(ListenSock) ->
- 	{ok, Sock}=gen_tcp:accept(ListenSock),
+ 	{ok, Sock} = gen_tcp:accept(ListenSock),
 	spawn(?MODULE, handle_request, [Sock]),
 	loop(ListenSock).
 
  handle_request(Sock) ->
- 	{ok, {http_request, Method, Path, Version}}=gen_tcp:recv(Sock, 0),
+ 	{ok, {http_request, Method, {_, Path}, _Version}} = gen_tcp:recv(Sock, 0),
  	case (Method) of
- 		'PUT' -> handle_create_file(Sock);
- 		'POST' -> handle_post(Sock);
+ 		'PUT' -> handle_write_file(Sock, Path);
  		_ -> send_unsupported_error(Sock)
  	end.
 
- get_content_length(Sock) ->
- 	case gen_tcp:recv(Sock, 0, 60000) of
-		{ok, {http_header, _, 'Content-Length', _, Length}} -> list_to_integer(Length);
-		{ok, {http_header, _, Header, _, Value}}  ->
-			io:format("Header ~w got value ~s~n", [Header, Value]),
-			get_content_length(Sock)
+fetch_headers(Sock, Headers) ->
+	case gen_tcp:recv(Sock, 0, ?TIMEOUT) of
+		{ok, {http_header, _, Header, _, Value}} -> parse_headers(Sock, dict:store(Header, Value, Headers));
+		{ok, http_eoh} -> io:format("got eoh~n", []), Headers
 	end.
 
- get_body(Sock, Length) ->
-	case gen_tcp:recv(Sock, 0) of
-		{ok, http_eoh} ->
-			inet:setopts(Sock, [{packet, raw}]),
-			{ok,Body}=gen_tcp:recv(Sock, Length),
-			Body;
-		_ -> get_body(Sock, Length)
-	end.
+fetch_body(Sock, Length) ->
+	inet:setopts(Sock, [{packet, raw}]),
+	{ok, Body} = gen_tcp:recv(Sock, Length),
+	Body.
 
-handle_create_file(Sock) ->
-	Length=get_content_length(Sock),
-	PostBody=get_body(Sock, Length),
-	io:fwrite(PostBody),
-	send_accept(Sock).
-
- handle_post(Sock) ->
-	Length=get_content_length(Sock),
-	PostBody=get_body(Sock, Length),
+handle_write_file(Sock, Path) ->
+	Headers = fetch_headers(Sock, dict:new()),
+	Length = dict:fetch('Content-Length', Headers),
+	PostBody= fetch_body(Sock, list_to_integer(Length)),
+	% api call here
 	io:fwrite(PostBody),
 	send_accept(Sock).
 
