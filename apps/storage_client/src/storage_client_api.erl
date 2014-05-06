@@ -6,15 +6,12 @@
 -define(SERVER, storage_core_srv).
 % -define(HANDLERS, proc_handlers).
 
--export([echo/0, request/0]).
+-export([request_create/2]).
 
-echo() ->
-	gen_server:call({?SERVER, 'ds@michal-pc'}, none, 1000).
-
-request() ->
+request_create(V_path, RawData) ->
 	gen_server:call({?SERVER, 'ds@michal-pc'},
-		#request{	action	= write,
-					user_id	= michal,
-					v_path	= "path/to/file",
-					options	= none }
-				).
+		#request{	action	= create,
+					user_id	= "user01",
+					v_path	= V_path,
+					options	= #create_opts{	data = RawData }
+				}).

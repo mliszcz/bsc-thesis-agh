@@ -1,3 +1,6 @@
+%% @author Michal Liszcz
+%% @doc REST interface for Storage Server
+
 -module(storage_http_srv).
 -export([start/0, handle_request/1]).
 -define(TIMEOUT, 60000).
@@ -44,8 +47,8 @@ start() ->
 
 fetch_headers(Sock, Headers) ->
 	case gen_tcp:recv(Sock, 0, ?TIMEOUT) of
-		{ok, {http_header, _, Header, _, Value}} -> parse_headers(Sock, dict:store(Header, Value, Headers));
-		{ok, http_eoh} -> io:format("got eoh~n", []), Headers
+		{ok, {http_header, _, Header, _, Value}} -> fetch_headers(Sock, dict:store(Header, Value, Headers));
+		{ok, http_eoh} -> Headers
 	end.
 
 fetch_body(Sock, Length) ->
@@ -56,9 +59,9 @@ fetch_body(Sock, Length) ->
 handle_write_file(Sock, Path) ->
 	Headers = fetch_headers(Sock, dict:new()),
 	Length = dict:fetch('Content-Length', Headers),
-	PostBody= fetch_body(Sock, list_to_integer(Length)),
-	% api call here
-	io:fwrite(PostBody),
+	RawData = fetch_body(Sock, list_to_integer(Length)),
+	storage_client_api:request_create(Path, list_to_binary(RawData)),
+	io:format("writing file ~s~n", [Path]),
 	send_accept(Sock).
 
  send_accept(Sock) ->
