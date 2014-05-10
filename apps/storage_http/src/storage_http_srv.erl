@@ -2,20 +2,27 @@
 %% @doc REST interface for Storage Server
 
 -module(storage_http_srv).
--export([start/0, handle_request/1]).
--define(TIMEOUT, 60000).
+-include("shared.hrl").
+-export([start_link/1, stop/0, init/1]).
 
-start() ->
-	start(8081).
+start_link(Port) ->
+	globals:init(?MODULE),
+	register(?HTTP_SERVER, spawn_link(?MODULE, init, [Port])).
 
- start(Port)->
-	{ok, ListenSock} = gen_tcp:listen(Port, [list,{active, false},{packet,http}]),
-	loop(ListenSock).
+stop() ->
+	gen_tcp:close(globals:get(?MODULE, socket)),
+	globals:deinit(?MODULE).
+
+ init(Port)->
+	{ok, ListenSock} = gen_tcp:listen(Port, [list, {active, false}, {packet,http}]),
+	globals:set(?MODULE, socket, ListenSock),
+	listen(ListenSock).
  
- loop(ListenSock) ->
- 	{ok, Sock} = gen_tcp:accept(ListenSock),
-	spawn(?MODULE, handle_request, [Sock]),
-	loop(ListenSock).
+ listen(ListenSock) ->
+ 	case gen_tcp:accept(ListenSock) of
+ 		{ok, Sock} -> spawn(?MODULE, handle_request, [Sock]), listen(ListenSock);
+ 		{error, _} -> io:format("terminating sockets~n", [])
+ 	end.	
 
  handle_request(Sock) ->
  	{ok, {http_request, Method, {_, Path}, _Version}} = gen_tcp:recv(Sock, 0),
