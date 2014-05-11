@@ -26,7 +26,7 @@
 
 start_link() ->
 	util:set_env(core_node_dir, filename:join([util:get_env(core_work_dir), atom_to_list(node())])),
-	io:format("core gen server ONLINE~n", []),
+	io:format("core gen server ONLINE~n", []), 
 	gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
 stop() ->
@@ -68,7 +68,6 @@ code_change(_OldVsn, State, _Extra) ->
 
 
 old_init() ->
-	globals:init(),
 
 	filelib:ensure_dir(resolve_file(".metadata")),
 	metadata:init(resolve_file(".metadata")),
@@ -90,9 +89,7 @@ old_init() ->
 old_deinit() ->
 	io:format("~w: bye. luv ja.~n", [erlang:localtime()]),
 	ets:delete(?EXECUTORS),
-	metadata:deinit(),
-
-	globals:deinit().
+	metadata:deinit().
 
 
 %%

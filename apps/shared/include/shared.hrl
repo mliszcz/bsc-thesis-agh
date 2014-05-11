@@ -8,6 +8,7 @@
 
 % node server modules
 -define(CORE_SERVER, storage_core_srv).
+-define(DIST_SERVER, storage_dist_srv).
 -define(HTTP_SERVER, storage_http_srv).
 
 
@@ -43,4 +44,21 @@
 
 -record(move_opts, {
 						new_loc		% atom (node)
-  						}).
+						}).
+
+
+%% new, simplified request structure
+
+-record(rreq, {
+	v_path,	% v_path = string()
+	method,	% method = get | put | del
+
+	user_id,	% user_id = string()
+
+	put_path = none,	% put_path = string(), new v_path
+	put_loct = none,	% put_loct = atom(), node()
+	put_data = none,	% put_data = binary()
+
+	options = none		% reserved for future use
+
+	}).
