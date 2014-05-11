@@ -6,6 +6,11 @@
 -define(SYSTEM_PROC, system).
 -define(TIMEOUT, 1000).
 
+% node server modules
+-define(CORE_SERVER, storage_core_srv).
+-define(HTTP_SERVER, storage_http_srv).
+
+
 -record(file, {
 			   		v_path	= "/empty",	% string			// THIS AND THIS
 			   		owner_id,			% string (uuid)		// FORMS PRIMARY KEY

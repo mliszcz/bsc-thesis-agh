@@ -1,4 +1,4 @@
-{application, storage_client,
+{application, storage,
  [
   {description, ""},
   {vsn, "1"},
@@ -7,6 +7,6 @@
                   kernel,
                   stdlib
                  ]},
-  {mod, { storage_client_api, []}},
+  {mod, { storage_app, ["node.config"]}},
   {env, []}
  ]}.

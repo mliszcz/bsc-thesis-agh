@@ -3,20 +3,61 @@
 
 -module(storage_http_srv).
 -include("shared.hrl").
--export([start_link/1, stop/0, init/1]).
+-behaviour(gen_server).
+-define(SERVER, ?MODULE).
 
-start_link(Port) ->
-	globals:init(?MODULE),
-	register(?HTTP_SERVER, spawn_link(?MODULE, init, [Port])).
+%% ------------------------------------------------------------------
+%% API Function Exports
+%% ------------------------------------------------------------------
+
+-export([start_link/0, stop/0, listen/1, handle_request/1]).
+
+%% ------------------------------------------------------------------
+%% gen_server Function Exports
+%% ------------------------------------------------------------------
+
+-export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
+
+%% ------------------------------------------------------------------
+%% API Function Definitions
+%% ------------------------------------------------------------------
+
+start_link() ->
+	gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
 stop() ->
-	gen_tcp:close(globals:get(?MODULE, socket)),
-	globals:deinit(?MODULE).
+	gen_server:cast(?SERVER, stop).
 
- init(Port)->
-	{ok, ListenSock} = gen_tcp:listen(Port, [list, {active, false}, {packet,http}]),
-	globals:set(?MODULE, socket, ListenSock),
-	listen(ListenSock).
+%% ------------------------------------------------------------------
+%% gen_server Function Definitions
+%% ------------------------------------------------------------------
+
+init(_Args) ->
+	{ok, ListenSock} = gen_tcp:listen(util:get_env(http_port), [list, {active, false}, {packet,http}, {reuseaddr, true}]),
+	spawn_link(?MODULE, listen, [ListenSock]),
+	{ok, ListenSock}.
+
+handle_call(_Request, _From, State) ->
+	{reply, ok, State}.
+
+handle_cast(stop, State) ->
+	gen_tcp:close(State),
+	{stop, normal, State}.
+
+handle_info(_Info, State) ->
+	{noreply, State}.
+
+terminate(_Reason, State) ->
+	gen_tcp:close(State),
+	io:format("closed~n", []),
+	ok.
+
+code_change(_OldVsn, State, _Extra) ->
+	{ok, State}.
+
+%% ------------------------------------------------------------------
+%% Internal Function Definitions
+%% ------------------------------------------------------------------
  
  listen(ListenSock) ->
  	case gen_tcp:accept(ListenSock) of

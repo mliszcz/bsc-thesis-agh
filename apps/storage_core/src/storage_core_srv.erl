@@ -27,6 +27,7 @@
 %% ------------------------------------------------------------------
 
 start_link() ->
+	io:format("core gen server ONLINE~n", []),
 	gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
 stop() ->
