@@ -26,7 +26,7 @@ start_link() ->
 	gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
 stop() ->
-	gen_server:cast(?SERVER, stop).
+	gen_server:cast(?SERVER, stop).	%% @FIXME this is never called
 
 %% ------------------------------------------------------------------
 %% gen_server Function Definitions

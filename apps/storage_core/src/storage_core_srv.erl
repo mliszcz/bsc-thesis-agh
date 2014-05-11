@@ -5,8 +5,6 @@
 -include("shared.hrl").
 -behaviour(gen_server).
 -define(SERVER, ?MODULE).
--define(WORK_DIR, "/home/michal/Documents/inz/local_storage/").
--define(NODE_DIR, ?WORK_DIR ++ atom_to_list(node()) ++ "/").
 -define(EXEC_PROC, executor_proc).
 -define(EXECUTORS, proc_executors).
 
@@ -27,6 +25,7 @@
 %% ------------------------------------------------------------------
 
 start_link() ->
+	util:set_env(core_node_dir, filename:join([util:get_env(core_work_dir), atom_to_list(node())])),
 	io:format("core gen server ONLINE~n", []),
 	gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
@@ -71,9 +70,8 @@ code_change(_OldVsn, State, _Extra) ->
 old_init() ->
 	globals:init(),
 
-	NodeDir = ?NODE_DIR,
-	filelib:ensure_dir(NodeDir),
-	metadata:init(NodeDir++".metadata"),
+	filelib:ensure_dir(resolve_file(".metadata")),
+	metadata:init(resolve_file(".metadata")),
 	
 	%% calculate fill
 	Files = metadata:to_list(),
@@ -286,6 +284,10 @@ get_executor(Name) ->
 % %%
 
 
+resolve_file(FileName) ->
+	filename:join([util:get_env(core_node_dir), FileName]).
+
+
 process_request(#request{action		= create,
 						 user_id	= UserId,
 						 v_path		= VPath,
@@ -303,7 +305,7 @@ process_request(#request{action		= create,
 	%% storage reserved on dispatching
 	%% globals:set(fill, globals:get(fill)+byte_size(Data)),
 	
-	file:write_file(?NODE_DIR++NewId, Data),
+	file:write_file(resolve_file(NewId), Data),
 	
 	io:format("~w: creating done ...~n", [erlang:localtime()]),
 	
@@ -322,7 +324,7 @@ process_request(#request{action		= delete,
 	globals:set(fill, globals:get(fill)-File#file.size),
 	
 	metadata:delete(File),
-	file:delete(?NODE_DIR++File#file.local_id),
+	file:delete(resolve_file(File#file.local_id)),
 	
 	{ ok, deleted };
 
@@ -337,7 +339,7 @@ process_request(#request{action		= read,
 	io:format("~w: got file ~s~n", [erlang:localtime(), File#file.v_path]),
 	metadata:modify(File#file{last_access=util:timestamp()}),
 	io:format("~w: meta modified!~n", [erlang:localtime()]),
-	{ ok, Data } = file:read_file(?NODE_DIR++File#file.local_id),
+	{ ok, Data } = file:read_file(resolve_file(File#file.local_id)),
 	io:format("~w: got ~w bytes!~n", [erlang:localtime(), byte_size(Data)]),
 	{ok, Data };
 
@@ -379,7 +381,7 @@ process_request(#request{action		= write,
 	case Data of
 		false -> ok;%%io:format("~w: data not changed~n", [erlang:localtime()]), ok;
 		_ -> io:format("~w: writing data~n", [erlang:localtime()]),
-			 file:write_file(?NODE_DIR++NewFile#file.local_id, Data)
+			 file:write_file(resolve_file(NewFile#file.local_id), Data)
 	end,
 	io:format("~w: writing done!!!!!!!!!!!!!!~n", [erlang:localtime()]),
 	{ ok, changes_written };
