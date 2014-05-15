@@ -42,13 +42,14 @@ init(_Args) ->
 	RemoteNodes = sets:new(),
 	RemoteNodes = sets:add_element(InitialNode, RemoteNodes),
 	RemoteNodes = remote_scan(RemoteNodes),
-	say_hello(),
+	say_hello(RemoteNodes),
 
 	{ok, RemoteNodes}.
 
 handle_call(#rreq{} = Request, From, State) ->
-	handle_request(Request, From),
-	{noreply, State};
+	% handle_request(Request, From),
+	% {noreply, State};
+	{reply, ok, State};
 
 handle_call({get_remote_nodes}, _From, State) ->
 	{reply, {ok, State}, State};
@@ -59,24 +60,20 @@ handle_call({request_storage, RequiredCap}, _From, State) ->
 		_ -> {reply, {error, storage_full}, State}
 	end;
 
-handle_call({reserve_storage, RequiredCap}, _From, State)
-		
-		{ Pid, reserve_storage, RequiredCap } ->
-			io:format("~w: reserving on system!~n", [erlang:localtime()]),
-			globals:set(fill, globals:get(fill)+RequiredCap),
-			io:format("~w: reserved, responding...~n", [erlang:localtime()]),
-			Pid ! { ok, reserved },
-			loop();
+handle_call({reserve_storage, RequiredCap}, _From, State) ->
+	io:format("~w: reserving on system!~n", [erlang:localtime()]),
+	globals:set(fill, globals:get(fill)+RequiredCap),
+	io:format("~w: reserved, responding...~n", [erlang:localtime()]),
+	{reply, {ok, reserved}, State}.
 
 handle_cast(#request{} = Request, State) ->
-	handle_request(Request, none),
+	% handle_request(Request, none),
 	{noreply, State};
 
 handle_cast({hello, Node}, State) ->
 	{noreply, sets:add_element(Node, State)};
 
 handle_cast(stop, State) ->
-	old_deinit(),
 	{stop, normal, State}.
 
 handle_info(_Info, State) ->
