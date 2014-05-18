@@ -60,7 +60,6 @@ handle_call({request_storage, RequiredCap}, _From, State) ->
 	end;
 
 handle_call({reserve_storage, RequiredCap}, _From, State)
-		
 		{ Pid, reserve_storage, RequiredCap } ->
 			io:format("~w: reserving on system!~n", [erlang:localtime()]),
 			globals:set(fill, globals:get(fill)+RequiredCap),
