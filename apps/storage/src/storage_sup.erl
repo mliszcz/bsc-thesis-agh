@@ -35,6 +35,7 @@ stop() ->
 init(_Args) ->
 	Children = [
 		?CHILD(?CORE_SERVER, worker),
+		?CHILD(?DIST_SERVER, worker),
 		?CHILD(?HTTP_SERVER, worker)
 	],
 	{ok, { {one_for_one, 5, 10}, Children} }.
