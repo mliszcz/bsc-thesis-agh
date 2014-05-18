@@ -93,8 +93,11 @@ handle_put_file(Sock, Path) ->
 	send_accept(Sock).
 
 handle_get_file(Sock, Path) ->
-	{ok, RawData} = storage_client_api:request_read(Path),
-	send_binary(Sock, RawData).
+	io:format("GET file path\"~s\"~n", [Path]),
+	case Path of
+		"/" -> send_binary(Sock, list_to_binary("{\"plik1\", \"pl/ik.2\", \"plik3/w/katalogu/plik.doc\"}"));
+		_ ->{ok, RawData} = storage_client_api:request_read(Path), send_binary(Sock, RawData)
+	end.
 
 send_binary(Sock, RawData) ->
 	StrData = binary_to_list(RawData),
