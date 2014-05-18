@@ -51,7 +51,7 @@
 
 -record(rreq, {
 	v_path,	% v_path = string()
-	method,	% method = get | put | del
+	action,	% action = get | put | del
 
 	user_id,	% user_id = string()
 

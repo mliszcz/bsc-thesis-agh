@@ -46,10 +46,12 @@ init(_Args) ->
 
 	{ok, RemoteNodes}.
 
-handle_call(#rreq{} = Request, From, State) ->
-	% handle_request(Request, From),
-	% {noreply, State};
-	{reply, ok, State};
+handle_call({request, #rreq{action=get}=Request}, From, State) ->
+	broadcast(State, ?CORE_SERVER, {request, Request, From}),
+	{noreply, State};
+
+handle_call({request, #rreq{action=put}=Request}, From, State) ->
+
 
 handle_call({get_remote_nodes}, _From, State) ->
 	{reply, {ok, State}, State};
@@ -104,9 +106,16 @@ remote_scan(RemoteNodes) ->
 
 %% @doc Broadcasts own name to all nodes in the system
 say_hello(RemoteNodes) ->
-	sets:fold(
+	% sets:fold(
+	% 	fun(Node, _Acc) ->
+	% 		gen_server:cast({?DIST_SERVER, Node}, {hello, node()})
+	% 	end,
+	% 	[], RemoteNodes).
+	broadcast(RemoteNodes, ?DIST_SERVER, {hello, node())}).
+
+broadcast(RemoteNodes, Process, Message) ->
+	setsfoldl(
 		fun(Node, _Acc) ->
-			gen_server:cast({?DIST_SERVER, Node}, {hello, node()})
+			gen_server:cast({Process, Node}, Message)
 		end,
 		[], RemoteNodes).
-

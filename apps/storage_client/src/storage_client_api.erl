@@ -9,7 +9,7 @@
 -export([request_create/2, request_read/1]).
 
 request_create(V_path, RawData) ->
-	gen_server:call({?SERVER, 'ds@michal-pc'},
+	gen_server:call({?SERVER, node()},
 		#request{	action	= create,
 					user_id	= "user01",
 					v_path	= V_path,
@@ -17,7 +17,7 @@ request_create(V_path, RawData) ->
 				}).
 
 request_read(V_path) ->
-	gen_server:call({?SERVER, 'ds@michal-pc'},
+	gen_server:call({?SERVER, node()},
 		#request{	action	= read,
 					user_id	= "user01",
 					v_path	= V_path
