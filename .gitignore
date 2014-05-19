@@ -8,3 +8,4 @@ ebin/
 ./webServ/node_modules
 e
 node.config.work
+npm-debug.log
