@@ -5,7 +5,7 @@ deps
 *.plt
 erl_crash.dump
 ebin/
-./webServ/node_modules
+webServ/node_modules
 e
 node.config.work
 npm-debug.log
