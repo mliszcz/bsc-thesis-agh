@@ -10,7 +10,7 @@
 %% API Function Exports
 %% ------------------------------------------------------------------
 
--export([start_link/0, stop/0]).
+-export([start_link/0, stop/0, test/0]).
 
 %% ------------------------------------------------------------------
 %% gen_server Function Exports
@@ -23,11 +23,14 @@
 %% ------------------------------------------------------------------
 
 start_link() ->
-	io:format("dist gen server ONLINE~n", []),
+	log:info("DIST: starting~n"),
 	gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
 stop() ->
 	gen_server:cast(?SERVER, stop).
+
+test() ->
+	gen_server:call(?SERVER, {request, #rreq{action = get, v_path = "/empty", user_id="user1"}}).
 
 %% ------------------------------------------------------------------
 %% gen_server Function Definitions
@@ -39,9 +42,9 @@ init(_Args) ->
 
 	InitialNode = list_to_atom(util:get_env(dist_initial_node)),
 
-	RemoteNodes = sets:new(),
-	RemoteNodes = sets:add_element(InitialNode, RemoteNodes),
-	RemoteNodes = remote_scan(RemoteNodes),
+	log:info("DIST: initial node: '~p'~n", [InitialNode]),
+
+	RemoteNodes = remote_scan(sets:add_element(InitialNode, sets:new())),
 	say_hello(RemoteNodes),
 
 	{ok, RemoteNodes}.
@@ -51,7 +54,10 @@ handle_call({request, #rreq{action=get}=Request}, From, State) ->
 	{noreply, State};
 
 handle_call({request, #rreq{action=put}=Request}, From, State) ->
-
+	log:info("DIST: PUT requested~n"),
+	[T|_]=sets:to_list(State),
+	gen_server:cast({?CORE_SERVER, T}, {request, Request, From}),
+	{noreply, State};
 
 handle_call({get_remote_nodes}, _From, State) ->
 	{reply, {ok, State}, State};
@@ -111,10 +117,10 @@ say_hello(RemoteNodes) ->
 	% 		gen_server:cast({?DIST_SERVER, Node}, {hello, node()})
 	% 	end,
 	% 	[], RemoteNodes).
-	broadcast(RemoteNodes, ?DIST_SERVER, {hello, node())}).
+	broadcast(RemoteNodes, ?DIST_SERVER, {hello, node()}).
 
 broadcast(RemoteNodes, Process, Message) ->
-	setsfoldl(
+	sets:fold(
 		fun(Node, _Acc) ->
 			gen_server:cast({Process, Node}, Message)
 		end,

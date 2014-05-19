@@ -49,6 +49,11 @@ handle_cast(#request{} = Request, State) ->
 	handle_request(Request, none),
 	{noreply, State};
 
+handle_cast({request, Request, ReplyTo}, State) ->
+	log:info("CORE: got cast from dist srv~n"),
+	gen_server:reply(ReplyTo, passed_reply),
+	{noreply, State};
+
 handle_cast(stop, State) ->
 	old_deinit(),
 	{stop, normal, State}.
