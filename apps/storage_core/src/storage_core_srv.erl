@@ -40,12 +40,35 @@ init(Args) ->
 	old_init(),
 	{ok, Args}.
 
-handle_call(#request{} = Request, From, State) ->
-	handle_request(Request, From),
-	{noreply, State};
-	% {reply, Res, State}.
+% handle_call(#request{} = Request, From, State) ->
+% 	handle_request(Request, From),
+% 	{noreply, State};
+% 	% {reply, Res, State}.
 
-handle_call({request, #rreq{action=list, user_id=UserId}}, _From, State) ->
+%% ------------------------------------------------------------------
+%% new-style calls
+%% ------------------------------------------------------------------
+
+% handle_call({request, #rreq{action=get, v_path=VPath}, ReplyTo}, From, State) ->
+% 	log:info("CORE: GET requested ~s~n", [VPath]),
+% 	gen_server:reply(ReplyTo, {ok, list_to_binary("some mocked contents")}),
+% 	{noreply, State};
+
+% handle_call({request, #rreq{action=put, v_path=VPath}, ReplyTo}, From, State) ->
+% 	log:info("CORE: PUT requested ~s~n", [VPath]),
+% 	gen_server:reply(ReplyTo, {ok, created}),
+% 	{noreply, State};
+
+handle_call({request, #rreq{action=fnd, v_path=VPath, user_id=UserId}}, _From, State) ->
+	log:info("CORE: find requested ~s~n", [VPath]),
+	{reply,
+		case metadata:get(UserId, VPath) of
+			{ok, _} -> {true, found};
+			{error, _} -> {false, globals:get(fill)/globals:get(capacity)}
+		end,
+	State};
+
+handle_call({request, #rreq{action=lst, user_id=UserId}}, _From, State) ->
 	log:info("CORE: list requested~n"),
 	List = lists:map(
 		fun(#file{v_path=VPath, last_access=Time}) -> VPath end,
@@ -53,13 +76,26 @@ handle_call({request, #rreq{action=list, user_id=UserId}}, _From, State) ->
 	log:info("CORE: list served: ~p~n", [List]),
 	{reply, {ok, List}, State}.
 
-handle_cast(#request{} = Request, State) ->
-	handle_request(Request, none),
+
+
+% handle_cast(#request{} = Request, State) ->
+% 	handle_request(Request, none),
+% 	{noreply, State};
+
+%% ------------------------------------------------------------------
+%% new-style casts
+%% ------------------------------------------------------------------
+
+handle_cast({request, #rreq{action=get, v_path=VPath}=Request, ReplyTo}, State) ->
+	log:info("CORE: GET requested ~s~n", [VPath]),
+	% gen_server:reply(ReplyTo, {ok, list_to_binary("some mocked contents")}),
+	handle_request(translate_request(Request), ReplyTo),
 	{noreply, State};
 
-handle_cast({request, Request, ReplyTo}, State) ->
-	log:info("CORE: got cast from dist srv~n"),
-	gen_server:reply(ReplyTo, passed_reply),
+handle_cast({request, #rreq{action=put, v_path=VPath}=Request, ReplyTo}, State) ->
+	log:info("CORE: PUT requested ~s~n", [VPath]),
+	% gen_server:reply(ReplyTo, {ok, created}),
+	handle_request(translate_request(Request), ReplyTo),
 	{noreply, State};
 
 handle_cast(stop, State) ->
@@ -78,6 +114,28 @@ code_change(_OldVsn, State, _Extra) ->
 %% ------------------------------------------------------------------
 %% Internal Function Definitions
 %% ------------------------------------------------------------------
+
+translate_request(#rreq{action=get, v_path=VPath, user_id=UserId}) ->
+	#request{	action	= read,
+				user_id	= UserId,
+				v_path	= VPath
+			};
+
+translate_request(#rreq{action=put, v_path=VPath, user_id=UserId, put_path=NewPath, put_data=NewData}=NewReq) ->
+	case handle_call({request, NewReq#rreq{action=fnd}}, none, none) of
+		{_, {true, _}, _} ->
+			#request{	action	= write,
+							user_id	= UserId,
+							v_path	= VPath,
+							options	= #write_opts{ data = NewData }
+						};
+		{_, {false, _}, _} ->
+			#request{	action	= create,
+									user_id	= UserId,
+									v_path	= VPath,
+									options	= #create_opts{	data = NewData }
+								}
+	end.
 
 
 old_init() ->

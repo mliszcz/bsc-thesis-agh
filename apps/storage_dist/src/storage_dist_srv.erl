@@ -47,17 +47,22 @@ init(_Args) ->
 	{ok, RemoteNodes}.
 
 handle_call({request, #rreq{action=get, v_path=Path}=Request}, From, State) ->
-	info:log("DIST: broadcasting GET '~s'~n", [Path]),
-	broadcast(State, ?CORE_SERVER, {request, Request, From}),
+	log:info("DIST: broadcasting GET '~s'~n", [Path]),
+	spawn_link(
+		fun() ->
+			broadcast(State, ?CORE_SERVER, {request, Request, From})
+		end),
 	{noreply, State};
 
 handle_call({request, #rreq{action=put}=Request}, From, State) ->
 	log:info("DIST: PUT requested~n"),
-	[T|_]=sets:to_list(State),
-	gen_server:cast({?CORE_SERVER, T}, {request, Request, From}),
+	spawn_link(
+		fun() ->
+			dispatch_put(State, ?CORE_SERVER, {request, Request, From})
+		end),
 	{noreply, State};
 
-handle_call({request, #rreq{action=list, user_id=UserId}}=Request, From, State) ->
+handle_call({request, #rreq{action=lst, user_id=UserId}=Request}, From, State) ->
 	log:info("DIST: list requested~n"),
 	spawn_link(
 		fun() ->
@@ -136,3 +141,20 @@ broadcall_list(RemoteNodes, Process, Message) ->
 			Acc++Res
 		end,
 		[], RemoteNodes).
+
+dispatch_put(RemoteNodes, Process, {request, Request, ReplyTo}=Message) ->
+	{_, BestNode, _} = sets:fold(
+		fun(Node, {Found, MinNode, MinFill}) ->
+			case Found of
+				true -> {Found, MinNode, MinFill};
+				false ->
+					case gen_server:call({Process, Node}, {request, Request#rreq{action=fnd}}) of
+						{true, found} -> {true, Node, 0};
+						{false, PercentFill} when PercentFill <  MinFill -> {false, Node, PercentFill};
+						{false, PercentFill} when PercentFill >= MinFill -> {false, MinNode, MinFill}
+					end
+			end
+		end,
+		{false, none, 100}, RemoteNodes),
+	log:info("DIST: dispatching PUT to ~p~n", [BestNode]),
+	gen_server:cast({Process, BestNode}, Message).

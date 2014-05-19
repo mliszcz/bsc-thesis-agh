@@ -88,7 +88,7 @@ handle_put_file(Sock, Path) ->
 	Headers = fetch_headers(Sock, dict:new()),
 	Length = dict:fetch('Content-Length', Headers),
 	RawData = fetch_body(Sock, list_to_integer(Length)),
-	storage_client_api:request_create(Path, list_to_binary(RawData)),
+	storage_client_api:request_put(node(), Path, list_to_binary(RawData), none),
 	log:info("HTTP: writing file ~s~n", [Path]),
 	send_accept(Sock).
 
@@ -96,8 +96,8 @@ handle_get_file(Sock, Path) ->
 	log:info("HTTP: GET file path \"~s\"~n", [Path]),
 	send_binary(Sock,
 		case Path of
-			"/" -> log:info("HTTP: list~n"), {ok, RawList} = storage_client_api:request_list(Path), list_to_binary(lists:flatten(io_lib:format("~p",[RawList])));
-			_   -> log:info("HTTP: GET~n"),  {ok, RawData} = storage_client_api:request_read(Path), RawData
+			"/" -> log:info("HTTP: list~n"), {ok, RawList} = storage_client_api:request_list(node(), Path), list_to_binary(lists:flatten(io_lib:format("~p",[RawList])));
+			_   -> log:info("HTTP: GET~n"),  {ok, RawData} = storage_client_api:request_get(node(), Path), RawData
 		end).
 
 send_binary(Sock, RawData) ->
