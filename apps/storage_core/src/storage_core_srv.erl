@@ -42,8 +42,16 @@ init(Args) ->
 
 handle_call(#request{} = Request, From, State) ->
 	handle_request(Request, From),
-	{noreply, State}.
+	{noreply, State};
 	% {reply, Res, State}.
+
+handle_call({request, #rreq{action=list, user_id=UserId}}, _From, State) ->
+	log:info("CORE: list requested~n"),
+	List = lists:map(
+		fun(#file{v_path=VPath, last_access=Time}) -> VPath end,
+		metadata:get(UserId)),
+	log:info("CORE: list served: ~p~n", [List]),
+	{reply, {ok, List}, State}.
 
 handle_cast(#request{} = Request, State) ->
 	handle_request(Request, none),

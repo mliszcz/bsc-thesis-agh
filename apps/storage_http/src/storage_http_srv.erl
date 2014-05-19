@@ -62,7 +62,7 @@ code_change(_OldVsn, State, _Extra) ->
  listen(ListenSock) ->
  	case gen_tcp:accept(ListenSock) of
  		{ok, Sock} -> spawn(?MODULE, handle_request, [Sock]), listen(ListenSock);
- 		{error, _} -> io:format("terminating sockets~n", [])
+ 		{error, _} -> log:info("HTTP: terminating sockets~n")
  	end.	
 
  handle_request(Sock) ->
@@ -89,15 +89,16 @@ handle_put_file(Sock, Path) ->
 	Length = dict:fetch('Content-Length', Headers),
 	RawData = fetch_body(Sock, list_to_integer(Length)),
 	storage_client_api:request_create(Path, list_to_binary(RawData)),
-	io:format("writing file ~s~n", [Path]),
+	log:info("HTTP: writing file ~s~n", [Path]),
 	send_accept(Sock).
 
 handle_get_file(Sock, Path) ->
-	io:format("GET file path\"~s\"~n", [Path]),
-	case Path of
-		"/" -> send_binary(Sock, list_to_binary("{\"plik1\", \"pl/ik.2\", \"plik3/w/katalogu/plik.doc\"}"));
-		_ ->{ok, RawData} = storage_client_api:request_read(Path), send_binary(Sock, RawData)
-	end.
+	log:info("HTTP: GET file path \"~s\"~n", [Path]),
+	send_binary(Sock,
+		case Path of
+			"/" -> log:info("HTTP: list~n"), {ok, RawList} = storage_client_api:request_list(Path), list_to_binary(lists:flatten(io_lib:format("~p",[RawList])));
+			_   -> log:info("HTTP: GET~n"),  {ok, RawData} = storage_client_api:request_read(Path), RawData
+		end).
 
 send_binary(Sock, RawData) ->
 	StrData = binary_to_list(RawData),

@@ -6,7 +6,7 @@
 -define(SERVER, storage_core_srv).
 % -define(HANDLERS, proc_handlers).
 
--export([request_create/2, request_read/1]).
+-export([request_create/2, request_read/1, request_list/1]).
 
 request_create(V_path, RawData) ->
 	gen_server:call({?SERVER, node()},
@@ -22,3 +22,11 @@ request_read(V_path) ->
 					user_id	= "user01",
 					v_path	= V_path
 				}).
+
+request_list(UserId) ->
+	gen_server:call({?SERVER, node()}, {request,
+		#rreq{	action	= list,
+				user_id	= "user01",
+				v_path	= "/"
+			}
+		}).

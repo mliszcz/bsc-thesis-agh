@@ -41,15 +41,13 @@ init(_Args) ->
 	globals:set(capacity, util:get_env(dist_storage_cap)),
 
 	InitialNode = list_to_atom(util:get_env(dist_initial_node)),
-
-	log:info("DIST: initial node: '~p'~n", [InitialNode]),
-
 	RemoteNodes = remote_scan(sets:add_element(InitialNode, sets:new())),
 	say_hello(RemoteNodes),
 
 	{ok, RemoteNodes}.
 
-handle_call({request, #rreq{action=get}=Request}, From, State) ->
+handle_call({request, #rreq{action=get, v_path=Path}=Request}, From, State) ->
+	info:log("DIST: broadcasting GET '~s'~n", [Path]),
 	broadcast(State, ?CORE_SERVER, {request, Request, From}),
 	{noreply, State};
 
@@ -59,7 +57,17 @@ handle_call({request, #rreq{action=put}=Request}, From, State) ->
 	gen_server:cast({?CORE_SERVER, T}, {request, Request, From}),
 	{noreply, State};
 
-handle_call({get_remote_nodes}, _From, State) ->
+handle_call({request, #rreq{action=list, user_id=UserId}}=Request, From, State) ->
+	log:info("DIST: list requested~n"),
+	spawn_link(
+		fun() ->
+			List = broadcall_list(State, ?CORE_SERVER, {request, Request}),
+			log:info("DIST: list served: ~p~n", [List]),
+			gen_server:reply(From, {ok, List})
+		end),
+	{noreply, State};
+
+handle_call({remotes}, _From, State) ->
 	{reply, {ok, State}, State};
 
 handle_call({request_storage, RequiredCap}, _From, State) ->
@@ -69,9 +77,9 @@ handle_call({request_storage, RequiredCap}, _From, State) ->
 	end;
 
 handle_call({reserve_storage, RequiredCap}, _From, State) ->
-	io:format("~w: reserving on system!~n", [erlang:localtime()]),
+	log:info("DIST: reserving...~n"),
 	globals:set(fill, globals:get(fill)+RequiredCap),
-	io:format("~w: reserved, responding...~n", [erlang:localtime()]),
+	log:info("DIST: reserved!~n"),
 	{reply, {ok, reserved}, State}.
 
 handle_cast(#request{} = Request, State) ->
@@ -102,7 +110,7 @@ code_change(_OldVsn, State, _Extra) ->
 remote_scan(RemoteNodes) ->
 	sets:fold(
 		fun(Node, Acc) ->
-			try gen_server:call({?DIST_SERVER, Node}, {get_remote_nodes}) of
+			try gen_server:call({?DIST_SERVER, Node}, {remotes}) of
 				{ok, NodeSet} -> sets:union(Acc, NodeSet)
 			catch
 				_:_ -> Acc
@@ -112,16 +120,19 @@ remote_scan(RemoteNodes) ->
 
 %% @doc Broadcasts own name to all nodes in the system
 say_hello(RemoteNodes) ->
-	% sets:fold(
-	% 	fun(Node, _Acc) ->
-	% 		gen_server:cast({?DIST_SERVER, Node}, {hello, node()})
-	% 	end,
-	% 	[], RemoteNodes).
 	broadcast(RemoteNodes, ?DIST_SERVER, {hello, node()}).
 
 broadcast(RemoteNodes, Process, Message) ->
 	sets:fold(
 		fun(Node, _Acc) ->
 			gen_server:cast({Process, Node}, Message)
+		end,
+		[], RemoteNodes).
+
+broadcall_list(RemoteNodes, Process, Message) ->
+	sets:fold(
+		fun(Node, Acc) ->
+			{ok, Res} = gen_server:call({Process, Node}, Message),
+			Acc++Res
 		end,
 		[], RemoteNodes).
