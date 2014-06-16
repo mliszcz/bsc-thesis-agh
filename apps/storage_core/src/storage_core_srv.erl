@@ -26,7 +26,7 @@
 
 start_link() ->
 	util:set_env(core_node_dir, filename:join([util:get_env(core_work_dir), atom_to_list(node())])),
-	io:format("core gen server ONLINE~n", []), 
+	log:info("core gen server ONLINE"), 
 	gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
 stop() ->

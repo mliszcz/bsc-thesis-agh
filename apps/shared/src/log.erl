@@ -13,29 +13,35 @@ warn(Msg) -> warn(Msg, []).
 error(Msg) -> ?MODULE:error(Msg, []).
 
 info(Msg, Data) ->
-	case should_log(info) of
-		true -> error_logger:info_msg(Msg, Data);
-		_ -> none
-	end.
+	log_stdout(info, Msg, Data).
 
 warn(Msg, Data) ->
-	case should_log(warn) of
-		true -> error_logger:warning_msg(Msg, Data);
-		_ -> none
-	end.
+	log_stdout(warn, Msg, Data).
 
 error(Msg, Data) ->
-	case should_log(error) of
-		true -> error_logger:error_msg(Msg, Data);
-		_ -> none
-	end.
+	log_stdout(error, Msg, Data).
 
 should_log(Level) ->
 	case {Level, util:get_env(app_log_level)} of
-		{_, info}		-> true;
-		{info, warn}	-> false;
-		{_, warn}		-> true;
-		{error, error}	-> true;
-		{_, error}		-> false;
+		{_,		info }	-> true;
+		{info,	warn }	-> false;
+		{_,		warn }	-> true;
+		{error,	error}	-> true;
+		{_,		error}	-> false;
 		_				-> true
+	end.
+
+backtrace(Nth) ->
+	catch throw(away),
+	{Module, Fun, Arity, _} = lists:nth(Nth, erlang:get_stacktrace()),
+	{Module, Fun, Arity}.
+
+log_stdout(Level, Msg, Data) ->
+	case should_log(Level) of
+		true ->
+			{_, {H,M,S}} = erlang:localtime(),
+			{Mod, Fun, Arity} = backtrace(3),
+			io:format("[~p] ~2..0b:~2..0b:~2..0b (~p:~p/~p): ", [Level, H, M, S, Mod, Fun, Arity]),
+			io:format(Msg++"~n", Data);
+		_ -> none
 	end.
