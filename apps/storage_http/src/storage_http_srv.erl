@@ -59,19 +59,22 @@ code_change(_OldVsn, State, _Extra) ->
 %% Internal Function Definitions
 %% ------------------------------------------------------------------
  
- listen(ListenSock) ->
- 	case gen_tcp:accept(ListenSock) of
- 		{ok, Sock} -> spawn(?MODULE, handle_request, [Sock]), listen(ListenSock);
- 		{error, _} -> log:info("HTTP: terminating sockets~n")
- 	end.	
+listen(ListenSock) ->
+	case gen_tcp:accept(ListenSock) of
+		{ok, Sock} -> spawn(?MODULE, handle_request, [Sock]), listen(ListenSock);
+		{error, _} -> log:error("tcp accept failed")
+	end.	
 
- handle_request(Sock) ->
- 	{ok, {http_request, Method, {_, Path}, _Version}} = gen_tcp:recv(Sock, 0),
- 	case (Method) of
- 		'PUT' -> handle_put_file(Sock, Path);
- 		'GET' -> handle_get_file(Sock, Path);
- 		_ -> send_unsupported_error(Sock)
- 	end.
+handle_request(Sock) ->
+	{ok, {http_request, Method, {_, Path}, _Version}} = gen_tcp:recv(Sock, 0),
+	log:info("accepted ~p from ~s (~s)", [Method, hostname(Sock), Path]),
+	case (Method) of
+		'PUT'	-> handle_put_file(Sock, Path);
+		'GET'	-> handle_get_file(Sock, Path);
+		_		-> send_unsupported_error(Sock)
+	end,
+	gen_tcp:close(Sock).
+
 
 fetch_headers(Sock, Headers) ->
 	case gen_tcp:recv(Sock, 0, ?TIMEOUT) of
@@ -89,25 +92,34 @@ handle_put_file(Sock, Path) ->
 	Length = dict:fetch('Content-Length', Headers),
 	RawData = fetch_body(Sock, list_to_integer(Length)),
 	storage_client_api:request_put(node(), Path, list_to_binary(RawData), none),
-	log:info("HTTP: writing file ~s~n", [Path]),
 	send_accept(Sock).
 
 handle_get_file(Sock, Path) ->
-	log:info("HTTP: GET file path \"~s\"~n", [Path]),
 	send_binary(Sock,
 		case Path of
-			"/" -> log:info("HTTP: list~n"), {ok, RawList} = storage_client_api:request_list(node(), Path), list_to_binary(lists:flatten(io_lib:format("~p",[RawList])));
-			_   -> log:info("HTTP: GET~n"),  {ok, RawData} = storage_client_api:request_get(node(), Path), RawData
+			"/" ->
+				{ok, RawList} = storage_client_api:request_list(node(), Path),
+				list_to_binary(lists:flatten(io_lib:format("~p",[RawList])));
+			_   ->
+				{ok, RawData} = storage_client_api:request_get(node(), Path),
+				RawData
 		end).
 
 send_binary(Sock, RawData) ->
+	log:info("responding to ~s with HTTP/1.0 200 OK", [hostname(Sock)]),
 	StrData = binary_to_list(RawData),
 	gen_tcp:send(Sock, iolist_to_binary(io_lib:fwrite("HTTP/1.0 200 OK\r\nContent-Length: ~p\r\n\r\n~s", [length(StrData), StrData]))).
 
- send_accept(Sock) ->
-	gen_tcp:send(Sock, "HTTP/1.1 202 Accepted\r\nConnection: close\r\nContent-Type: text/html; charset=UTF-8\r\nCache-Control: no-cache\r\n\r\n"),
-	gen_tcp:close(Sock).
+send_accept(Sock) ->
+	log:info("responding to ~s with HTTP/1.1 202 Accepted", [hostname(Sock)]),
+	gen_tcp:send(Sock, "HTTP/1.1 202 Accepted\r\nConnection: close\r\nContent-Type: text/html; charset=UTF-8\r\nCache-Control: no-cache\r\n\r\n").
 	
- send_unsupported_error(Sock) ->
-	gen_tcp:send(Sock, "HTTP/1.1 405 Method Not Allowed\r\nConnection: close\r\nAllow: POST\r\nContent-Type: text/html; charset=UTF-8\r\nCache-Control: no-cache\r\n\r\n"),
-	gen_tcp:close(Sock).
+send_unsupported_error(Sock) ->
+	log:warn("responding to ~s with HTTP/1.1 405 Method Not Allowed", [hostname(Sock)]),
+	gen_tcp:send(Sock, "HTTP/1.1 405 Method Not Allowed\r\nConnection: close\r\nAllow: POST\r\nContent-Type: text/html; charset=UTF-8\r\nCache-Control: no-cache\r\n\r\n").
+
+hostname(Socket) ->
+	case inet:peername(Socket) of
+ 		{ok, {{O1, O2, O3, O4}, Port}} -> io_lib:format("~p.~p.~p.~p:~p",[O1, O2, O3, O4, Port]);
+ 		{error, _} -> "UNKNOWN-HOST"
+ 	end.
