@@ -3,7 +3,6 @@
 
 -module(executor).
 -include("shared.hrl").
--define(EXEC_PROC, executor_proc).
 -define(EXECUTORS, proc_executors).
 
 -export([ push/2 ]).

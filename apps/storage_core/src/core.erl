@@ -10,24 +10,52 @@ handle_req(
 	#request{
 		type=create,
 		user=UserId,
-		path=VPath
-	}=Request) ->
+		path=VPath,
+		data=PData
+	}=_Request) ->
 	log:info("create ~s", [VPath]),
 	case metadata:get(UserId, VPath) of
-		{ok,	_} -> log:warn("file exists!"), {error, file_exists};
-		{error,	_} -> create_file(Request)
+		{ok,	_} ->
+			log:warn("file exists!"),
+			{error, file_exists};
+
+		{error,	_} ->
+			File = #filedesc {
+				path = VPath,
+				user = UserId,
+				size = byte_size(PData),
+				last_access	= util:timestamp()
+				},
+		
+			{ok, #filedesc{internal_id=NewId, size=Size}} = metadata:create(File),
+			globals:set(fill, globals:get(fill)+Size),
+			globals:set(reserv, globals:get(reserv)-Size),
+		
+			files:write(NewId, PData),
+			log:info("file ~s  created!", [VPath]),
+			{ok, created}
 	end;
 
 handle_req(
 	#request{
 	type=update,
 	user=UserId,
-	path=VPath
-	}=Request) ->
+	path=VPath,
+	data=Data
+	}=_Request) ->
 	log:info("update ~s", [VPath]),
 	case metadata:get(UserId, VPath) of
-		{error,	_} -> log:warn("file not exists!"), {error, not_found};
-		{ok,	_} -> create_file(Request)
+		{error,	_} ->
+			log:warn("file not exists"),
+			{error, not_found};
+
+		{ok,	File} ->
+			metadata:modify(File#filedesc{last_access=util:timestamp()}),
+			globals:set(fill, globals:get(fill)+byte_size(Data)),
+			globals:set(fill, globals:get(fill)-File#filedesc.size),
+			metadata:modify(File#filedesc{size=byte_size(Data)}),
+			files:write(File#filedesc.internal_id, Data),
+			{ok, updated}
 	end;
 
 handle_req(
@@ -66,26 +94,3 @@ handle_req(
 %% ------------------------------------------------------------------
 %% Internal Function Definitions
 %% ------------------------------------------------------------------
-
-
-create_file(
-	#request{
-		user=UserId,
-		path=VPath,
-		data=PData
-	}) ->
-
-	File = #filedesc {
-		path = VPath,
-		user = UserId,
-		size = byte_size(PData),
-		last_access	= util:timestamp()
-		},
-	
-	{ok, #filedesc{internal_id=NewId}} = metadata:create(File),
-	%% storage reserved on dispatching
-	%% globals:set(fill, globals:get(fill)+byte_size(Data)),
-	
-	files:write(NewId, PData),
-	log:info("file ~s  created!", [VPath]),
-	{ok, created}.

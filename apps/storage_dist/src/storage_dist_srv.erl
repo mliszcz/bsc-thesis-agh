@@ -38,7 +38,7 @@ init(_Args) ->
 	% globals:set(capacity, util:get_env(dist_storage_cap)),
 
 	InitialNode = list_to_atom(util:get_env(dist_initial_node)),
-	log:info("remote scan start!"),
+	log:info("performing remote scan"),
 	RemoteNodes = remote_scan(sets:add_element(InitialNode, sets:new())),
 	log:info("remote scan done!"),
 	broadcast(RemoteNodes, ?DIST_SERVER, {hello, node()}),	% broadcast own name
@@ -50,11 +50,11 @@ handle_call({request, #request{type=create, path=Path, data=Data}=Request},
 	log:info("creating ~s", [Path]),
 	spawn_link(
 		fun() ->
-			% TODO sort this list
-			% RequiredCap = byte_size(Data),
-			LeastFilled = node(),
-			% [{LeastFilled, _Fill} | _Tail ] = broadcall(State, ?DIST_SERVER, {request_storage, RequiredCap}),
-			gen_server:cast({?CORE_SERVER, LeastFilled}, {request, Request, From})
+			Size = byte_size(Data),
+			Fills = broadcall(State, ?CORE_SERVER, {reserve, Size}),
+			{_, Best} = lists:min(lists:map(fun({Node, Fill}) -> {Fill,Node} end, Fills)),
+			gen_server:cast({?CORE_SERVER, Best}, {request, Request, From}),
+			broadcast(sets:del_element(Best, State), ?CORE_SERVER, {release, Size})
 		end),
 	{noreply, State};
 
@@ -86,24 +86,8 @@ handle_call({request, #request{type=delete, path=Path}=Request},
 	{noreply, State};
 
 
-handle_call({state_info}, From, State) ->
+handle_call({state_info}, _From, State) ->
 	{reply, {ok, State}, State}.
-
-% handle_call({request_storage, RequiredCap}, _From, State) ->
-% 	case RequiredCap =< (globals:get(capacity)-globals:get(fill)) of
-% 		true -> {reply, {ok, globals:get(fill)/globals:get(capacity)}, State};
-% 		_ -> {reply, {error, storage_full}, State}
-% 	end;
-
-% handle_call({reserve_storage, RequiredCap}, _From, State) ->
-% 	log:info("DIST: reserving...~n"),
-% 	globals:set(fill, globals:get(fill)+RequiredCap),
-% 	log:info("DIST: reserved!~n"),
-% 	{reply, {ok, reserved}, State}.
-
-% handle_cast(#request{} = _Request, State) ->
-% 	% handle_request(Request, none),
-% 	{noreply, State};
 
 handle_cast({hello, Node}, State) ->
 	log:info("~p has joined the cluster!", [Node]),
@@ -128,9 +112,9 @@ code_change(_OldVsn, State, _Extra) ->
 %% @doc Scans all known remote nodes to find new ones
 remote_scan(RemoteNodes) ->
 	State = broadcall(sets:del_element(node(), RemoteNodes), ?DIST_SERVER, {state_info}),
-	Online = sets:from_list(lists:map(fun({Node, Res}) -> Node end, State)),
+	Online = sets:from_list(lists:map(fun({Node, _Res}) -> Node end, State)),
 	Offline = sets:subtract(RemoteNodes, Online),
-	AllNodes = sets:union(lists:map(fun({Node, Res}) -> Res end, State)),
+	AllNodes = sets:union(lists:map(fun({_Node, Res}) -> Res end, State)),
 	sets:add_element(node(), sets:subtract(AllNodes, Offline)).
 
 
@@ -145,34 +129,10 @@ broadcall(RemoteNodes, Process, Message) ->
 	sets:fold(
 		fun(Node, Acc) ->
 			try gen_server:call({Process, Node}, Message) of
-				{ok,	Res}	-> Acc++{Node, Res};
+				{ok,	Res}	-> Acc++[{Node, Res}];
 				{error,	_}		-> Acc
 			catch
 				error:{timeout, _} -> Acc
 			end
 		end,
 		[], RemoteNodes).
-
-% least_filled_node(RemoteNodes, RequiredCap) ->
-% 	Fills = broadcall(RemoteNodes, ?DIST_SERVER, {request_storage, RequiredCap}),
-% 	[H | _] = Fills,
-% 	return H.
-
-
-
-% dispatch_put(RemoteNodes, Process, {request, Request, ReplyTo}=Message) ->
-% 	{_, BestNode, _} = sets:fold(
-% 		fun(Node, {Found, MinNode, MinFill}) ->
-% 			case Found of
-% 				true -> {Found, MinNode, MinFill};
-% 				false ->
-% 					case gen_server:call({Process, Node}, {request, Request#rreq{action=fnd}}) of
-% 						{true, found} -> {true, Node, 0};
-% 						{false, PercentFill} when PercentFill <  MinFill -> {false, Node, PercentFill};
-% 						{false, PercentFill} when PercentFill >= MinFill -> {false, MinNode, MinFill}
-% 					end
-% 			end
-% 		end,
-% 		{false, none, 100}, RemoteNodes),
-% 	log:info("DIST: dispatching PUT to ~p~n", [BestNode]),
-% 	gen_server:cast({Process, BestNode}, Message).
