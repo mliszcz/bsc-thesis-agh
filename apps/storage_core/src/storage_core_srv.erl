@@ -57,6 +57,15 @@ init(_Args) ->
 
 	{ok, {Fill, Quota}}.
 
+handle_call({request,
+	#request{
+		type=list
+		}=Request, _ReplyTo}, From, {_Fill, _Quota}=State) ->
+
+	log:info("core list"),
+	executor:push(From, Request),
+	{noreply, State};
+
 handle_call({reserve, HowMuch}, _From, State) ->
 	log:info("reserving ~p B", [HowMuch]),
 	Fill = globals:get(fill),

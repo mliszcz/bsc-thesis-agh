@@ -27,6 +27,7 @@
 	user,
 	path,
 	size,
+	mode = private, % mode = private | public
 	last_access,
 	internal_id
 	}).

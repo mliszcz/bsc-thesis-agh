@@ -88,7 +88,15 @@ handle_req(
 			metadata:delete(File),
 			files:delete(File#filedesc.internal_id),
 			{ok, deleted}
-	end.
+	end;
+
+handle_req(
+	#request{
+		type=list,
+		user=UserId
+	}) ->
+	log:info("list"),
+	metadata:get(UserId).
 
 
 %% ------------------------------------------------------------------

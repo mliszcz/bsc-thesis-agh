@@ -59,7 +59,7 @@ get(UserId, VPath) ->
 	end.
 
 get(UserId) ->
-	ets:match_object(memDb, #filedesc{ user = UserId, _ = '_' }).
+	{ok, ets:match_object(memDb, #filedesc{ user = UserId, _ = '_' })}.
 
 to_list() ->
 	ets:tab2list(memDb).

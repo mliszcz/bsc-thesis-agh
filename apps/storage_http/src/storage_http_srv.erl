@@ -71,12 +71,14 @@ listen(ListenSock) ->
 handle_request(Sock) ->
 	{ok, {http_request, Method, {_, Path}, _Version}} = gen_tcp:recv(Sock, 0),
 	log:info("accepted ~p from ~s (~s)", [Method, http_util:hostaddr(Sock), Path]),
-	case (Method) of
-		'PUT'	-> handle_put(Sock, Path);		% create
-		'GET'	-> handle_get(Sock, Path);		% read
-		'POST'	-> handle_post(Sock, Path);		% update
-		'DELETE'-> handle_delete(Sock, Path);	% delete
-		_		-> handle_other(Sock, Path)
+	case {Method, Path} of
+		{'PUT',		_				} -> handle_put(Sock, Path);	% create
+		{'GET',		"/"				} -> handle_list(Sock, Path);	% 
+		{'GET',		"/favicon.ico"	} -> handle_other(Sock, Path);	% browser crap
+		{'GET',		_				} -> handle_get(Sock, Path);	% read
+		{'POST',	_				} -> handle_post(Sock, Path);	% update
+		{'DELETE',	_				} -> handle_delete(Sock, Path);	% delete
+		_							  -> handle_other(Sock, Path)
 	end,
 	gen_tcp:close(Sock).
 
@@ -113,6 +115,13 @@ handle_delete(Sock, Path) ->
 	case storage_client_api:request_delete(node(), Path) of
 		{ok,	deleted}	-> http_util:send_response(Sock, 'Accepted');
 		{error,	not_found}	-> http_util:send_response(Sock, 'NotFound');
+		{error,	_}			-> http_util:send_response(Sock, 'BadRequest')
+	end.
+
+handle_list(Sock, _Path) ->
+	{_Headers, _} = http_util:parse_request(Sock),
+	case storage_client_api:request_list(node(), none_path) of
+		{ok,	ErlList}	-> http_util:send_response(Sock, 'OK', lists:flatten(io_lib:format("~p", [ErlList])));
 		{error,	_}			-> http_util:send_response(Sock, 'BadRequest')
 	end.
 

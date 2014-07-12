@@ -85,6 +85,14 @@ handle_call({request, #request{type=delete, path=Path}=Request},
 		end),
 	{noreply, State};
 
+handle_call({request, #request{type=list}=Request}, From, State) ->
+	log:info("listing"),
+	spawn_link(
+		fun() ->
+			List = broadcall(State, ?CORE_SERVER, {request, Request, From}),
+			gen_server:reply(From, {ok, List})
+		end),
+	{noreply, State};
 
 handle_call({state_info}, _From, State) ->
 	{reply, {ok, State}, State}.
