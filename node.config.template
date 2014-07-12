@@ -13,10 +13,10 @@
 %% info, warn, error
 {app_log_level, info}.
 
-{core_work_dir, "/home/michal/Documents/inz/work_dir"}.
+{core_work_dir, "/absolute/path/to/working/dir"}.
 {core_storage_quota, 1073741824}.	% 1GB
 
-{dist_initial_node, "ds@michal-pc"}.
+{dist_initial_node, "nodename@nodehost"}.
 {dist_storage_cap, 1073741824}.			% 1GB % deprecated !!!
 
 {http_port, 8090}.

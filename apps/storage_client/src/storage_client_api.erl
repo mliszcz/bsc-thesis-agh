@@ -5,45 +5,52 @@
 -include("shared.hrl").
 -define(SERVER, ?DIST_SERVER).
 
--export([request_create/3, request_read/2, request_list/2, request_put/4, request_get/2]).
+-export([
+	request_create/3,
+	request_read/2,
+	request_update/3,
+	request_delete/2,
+	request_list/2
+	]).
 
-request_create(Node, VPath, RawData) ->
-	gen_server:call({?SERVER, Node},
-		#request{	action	= create,
-					user_id	= "user01",
-					v_path	= VPath,
-					options	= #create_opts{	data = RawData }
-				}).
-
-request_read(Node, VPath) ->
-	gen_server:call({?SERVER, Node},
-		#request{	action	= read,
-					user_id	= "user01",
-					v_path	= VPath
-				}).
-
-request_put(Node, VPath, RawData, NewVPath) ->
+request_create(Node, Path, Data) ->
 	gen_server:call({?SERVER, Node}, {request,
-		#rreq{	action	= put,
-				user_id	= "user01",
-				v_path	= VPath,
-				put_path = NewVPath,	% may be none
-				put_data = RawData		% may be none
-			}
+		#request{	type = create,
+					user = "user01",
+					path = Path,
+					data = Data
+				}
 		}).
 
-request_get(Node, VPath) ->
+request_read(Node, Path) ->
 	gen_server:call({?SERVER, Node}, {request,
-		#rreq{	action	= get,
-				user_id	= "user01",
-				v_path	= VPath
-			}
+		#request{	type = read,
+					user = "user01",
+					path = Path
+				}
 		}).
 
-request_list(Node, _UserId) ->
+request_update(Node, Path, Data) ->
 	gen_server:call({?SERVER, Node}, {request,
-		#rreq{	action	= lst,
-				user_id	= "user01",
-				v_path	= "/"
-			}
+		#request{	type = update,
+					user = "user01",
+					path = Path,
+					data = Data
+				}
+		}).
+
+request_delete(Node, Path) ->
+	gen_server:call({?SERVER, Node}, {request,
+			#request{	type = delete,
+						user = "user01",
+						path = Path
+					}
+		}).
+
+request_list(Node, Path) ->
+	gen_server:call({?SERVER, Node}, {request,
+			#request{	type = list,
+						user = "user01",
+						path = Path
+					}
 		}).

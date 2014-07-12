@@ -33,7 +33,10 @@ stop() ->
 %% ------------------------------------------------------------------
 
 init(_Args) ->
-	{ok, ListenSock} = gen_tcp:listen(util:get_env(http_port), [list, {active, false}, {packet,http}, {reuseaddr, true}]),
+	log:info("starting http listener"),
+	{ok, ListenSock} = gen_tcp:listen(
+		util:get_env(http_port),
+		[list, {active, false}, {packet,http}, {reuseaddr, true}]),
 	spawn_link(?MODULE, listen, [ListenSock]),
 	{ok, ListenSock}.
 
@@ -49,7 +52,7 @@ handle_info(_Info, State) ->
 
 terminate(_Reason, State) ->
 	gen_tcp:close(State),
-	io:format("closed~n", []),
+	log:info("closing"),
 	ok.
 
 code_change(_OldVsn, State, _Extra) ->
@@ -67,59 +70,52 @@ listen(ListenSock) ->
 
 handle_request(Sock) ->
 	{ok, {http_request, Method, {_, Path}, _Version}} = gen_tcp:recv(Sock, 0),
-	log:info("accepted ~p from ~s (~s)", [Method, hostname(Sock), Path]),
+	log:info("accepted ~p from ~s (~s)", [Method, http_util:hostaddr(Sock), Path]),
 	case (Method) of
-		'PUT'	-> handle_put_file(Sock, Path);
-		'GET'	-> handle_get_file(Sock, Path);
-		_		-> send_unsupported_error(Sock)
+		'PUT'	-> handle_put(Sock, Path);		% create
+		'GET'	-> handle_get(Sock, Path);		% read
+		'POST'	-> handle_post(Sock, Path);		% update
+		'DELETE'-> handle_delete(Sock, Path);	% delete
+		_		-> handle_other(Sock, Path)
 	end,
 	gen_tcp:close(Sock).
 
+%%
+%% method-specific handlers
+%%
 
-fetch_headers(Sock, Headers) ->
-	case gen_tcp:recv(Sock, 0, ?TIMEOUT) of
-		{ok, {http_header, _, Header, _, Value}} -> fetch_headers(Sock, dict:store(Header, Value, Headers));
-		{ok, http_eoh} -> Headers
+handle_put(Sock, Path) ->
+	{_Headers, StrData} = http_util:parse_request(Sock),
+	case storage_client_api:request_create(node(), Path, list_to_binary(StrData)) of
+		{ok,	created}		-> http_util:send_response(Sock, 'Created');
+		{error,	file_exists}	-> http_util:send_response(Sock, 'NotAllowed');
+		{error,	_}				-> http_util:send_response(Sock, 'BadRequest')
 	end.
 
-fetch_body(Sock, Length) ->
-	inet:setopts(Sock, [{packet, raw}]),
-	{ok, Body} = gen_tcp:recv(Sock, Length),
-	Body.
+handle_get(Sock, Path) ->
+	{_Headers, _} = http_util:parse_request(Sock),
+	case storage_client_api:request_read(node(), Path) of
+		{ok,	RawData}	-> http_util:send_response(Sock, 'OK', binary_to_list(RawData));
+		{error, not_found}	-> http_util:send_response(Sock, 'NotFound');
+		{error,	_}			-> http_util:send_response(Sock, 'BadRequest')
+	end.
 
-handle_put_file(Sock, Path) ->
-	Headers = fetch_headers(Sock, dict:new()),
-	Length = dict:fetch('Content-Length', Headers),
-	RawData = fetch_body(Sock, list_to_integer(Length)),
-	storage_client_api:request_put(node(), Path, list_to_binary(RawData), none),
-	send_accept(Sock).
+handle_post(Sock, Path) ->
+	{_Headers, StrData} = http_util:parse_request(Sock),
+	case storage_client_api:request_update(node(), Path, list_to_binary(StrData)) of
+		{ok,	_}			-> http_util:send_response(Sock, 'Accepted');
+		{error, not_found}	-> http_util:send_response(Sock, 'NotFound');
+		{error,	_}			-> http_util:send_response(Sock, 'BadRequest')
+	end.
 
-handle_get_file(Sock, Path) ->
-	send_binary(Sock,
-		case Path of
-			"/" ->
-				{ok, RawList} = storage_client_api:request_list(node(), Path),
-				list_to_binary(lists:flatten(io_lib:format("~p",[RawList])));
-			_   ->
-				{ok, RawData} = storage_client_api:request_get(node(), Path),
-				RawData
-		end).
+handle_delete(Sock, Path) ->
+	{_Headers, _} = http_util:parse_request(Sock),
+	case storage_client_api:request_delete(node(), Path) of
+		{ok,	deleted}	-> http_util:send_response(Sock, 'Accepted');
+		{error,	not_found}	-> http_util:send_response(Sock, 'NotFound');
+		{error,	_}			-> http_util:send_response(Sock, 'BadRequest')
+	end.
 
-send_binary(Sock, RawData) ->
-	log:info("responding to ~s with HTTP/1.0 200 OK", [hostname(Sock)]),
-	StrData = binary_to_list(RawData),
-	gen_tcp:send(Sock, iolist_to_binary(io_lib:fwrite("HTTP/1.0 200 OK\r\nContent-Length: ~p\r\n\r\n~s", [length(StrData), StrData]))).
-
-send_accept(Sock) ->
-	log:info("responding to ~s with HTTP/1.1 202 Accepted", [hostname(Sock)]),
-	gen_tcp:send(Sock, "HTTP/1.1 202 Accepted\r\nConnection: close\r\nContent-Type: text/html; charset=UTF-8\r\nCache-Control: no-cache\r\n\r\n").
-	
-send_unsupported_error(Sock) ->
-	log:warn("responding to ~s with HTTP/1.1 405 Method Not Allowed", [hostname(Sock)]),
-	gen_tcp:send(Sock, "HTTP/1.1 405 Method Not Allowed\r\nConnection: close\r\nAllow: POST\r\nContent-Type: text/html; charset=UTF-8\r\nCache-Control: no-cache\r\n\r\n").
-
-hostname(Socket) ->
-	case inet:peername(Socket) of
- 		{ok, {{O1, O2, O3, O4}, Port}} -> io_lib:format("~p.~p.~p.~p:~p",[O1, O2, O3, O4, Port]);
- 		{error, _} -> "UNKNOWN-HOST"
- 	end.
+handle_other(Sock, _Path) ->
+	log:warn("unsupported operation requested"),
+	http_util:send_response(Sock, 'BadRequest').

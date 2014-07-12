@@ -10,7 +10,7 @@
 %% API Function Exports
 %% ------------------------------------------------------------------
 
--export([start_link/0, stop/0, test/0]).
+-export([start_link/0, stop/0]).
 
 %% ------------------------------------------------------------------
 %% gen_server Function Exports
@@ -23,14 +23,11 @@
 %% ------------------------------------------------------------------
 
 start_link() ->
-	log:info("DIST: starting~n"),
+	log:info("starting"),
 	gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
 stop() ->
 	gen_server:cast(?SERVER, stop).
-
-test() ->
-	gen_server:call(?SERVER, {request, #rreq{action = get, v_path = "/empty", user_id="user1"}}).
 
 %% ------------------------------------------------------------------
 %% gen_server Function Definitions
@@ -38,60 +35,78 @@ test() ->
 
 init(_Args) ->
 
-	globals:set(capacity, util:get_env(dist_storage_cap)),
+	% globals:set(capacity, util:get_env(dist_storage_cap)),
 
 	InitialNode = list_to_atom(util:get_env(dist_initial_node)),
+	log:info("remote scan start!"),
 	RemoteNodes = remote_scan(sets:add_element(InitialNode, sets:new())),
-	say_hello(RemoteNodes),
+	log:info("remote scan done!"),
+	broadcast(RemoteNodes, ?DIST_SERVER, {hello, node()}),	% broadcast own name
 
 	{ok, RemoteNodes}.
 
-handle_call({request, #rreq{action=get, v_path=Path}=Request}, From, State) ->
-	log:info("DIST: broadcasting GET '~s'~n", [Path]),
+handle_call({request, #request{type=create, path=Path, data=Data}=Request},
+	From, State) ->
+	log:info("creating ~s", [Path]),
+	spawn_link(
+		fun() ->
+			% TODO sort this list
+			% RequiredCap = byte_size(Data),
+			LeastFilled = node(),
+			% [{LeastFilled, _Fill} | _Tail ] = broadcall(State, ?DIST_SERVER, {request_storage, RequiredCap}),
+			gen_server:cast({?CORE_SERVER, LeastFilled}, {request, Request, From})
+		end),
+	{noreply, State};
+
+handle_call({request, #request{type=read, path=Path}=Request},
+	From, State) ->
+	log:info("reading ~s", [Path]),
 	spawn_link(
 		fun() ->
 			broadcast(State, ?CORE_SERVER, {request, Request, From})
 		end),
 	{noreply, State};
 
-handle_call({request, #rreq{action=put}=Request}, From, State) ->
-	log:info("DIST: PUT requested~n"),
+handle_call({request, #request{type=update, path=Path}=Request},
+	From, State) ->
+	log:info("updating ~s", [Path]),
 	spawn_link(
 		fun() ->
-			dispatch_put(State, ?CORE_SERVER, {request, Request, From})
+			broadcast(State, ?CORE_SERVER, {request, Request, From})
 		end),
 	{noreply, State};
 
-handle_call({request, #rreq{action=lst, user_id=UserId}=Request}, From, State) ->
-	log:info("DIST: list requested~n"),
+handle_call({request, #request{type=delete, path=Path}=Request},
+	From, State) ->
+	log:info("deleting ~s", [Path]),
 	spawn_link(
 		fun() ->
-			List = broadcall_list(State, ?CORE_SERVER, {request, Request}),
-			log:info("DIST: list served: ~p~n", [List]),
-			gen_server:reply(From, {ok, List})
+			broadcast(State, ?CORE_SERVER, {request, Request, From})
 		end),
 	{noreply, State};
 
-handle_call({remotes}, _From, State) ->
-	{reply, {ok, State}, State};
 
-handle_call({request_storage, RequiredCap}, _From, State) ->
-	case RequiredCap =< (globals:get(capacity)-globals:get(fill)) of
-		true -> {reply, {ok, globals:get(fill)/globals:get(capacity)}, State};
-		_ -> {reply, {error, storage_full}, State}
-	end;
+handle_call({state_info}, From, State) ->
+	{reply, {ok, State}, State}.
 
-handle_call({reserve_storage, RequiredCap}, _From, State) ->
-	log:info("DIST: reserving...~n"),
-	globals:set(fill, globals:get(fill)+RequiredCap),
-	log:info("DIST: reserved!~n"),
-	{reply, {ok, reserved}, State}.
+% handle_call({request_storage, RequiredCap}, _From, State) ->
+% 	case RequiredCap =< (globals:get(capacity)-globals:get(fill)) of
+% 		true -> {reply, {ok, globals:get(fill)/globals:get(capacity)}, State};
+% 		_ -> {reply, {error, storage_full}, State}
+% 	end;
 
-handle_cast(#request{} = Request, State) ->
-	% handle_request(Request, none),
-	{noreply, State};
+% handle_call({reserve_storage, RequiredCap}, _From, State) ->
+% 	log:info("DIST: reserving...~n"),
+% 	globals:set(fill, globals:get(fill)+RequiredCap),
+% 	log:info("DIST: reserved!~n"),
+% 	{reply, {ok, reserved}, State}.
+
+% handle_cast(#request{} = _Request, State) ->
+% 	% handle_request(Request, none),
+% 	{noreply, State};
 
 handle_cast({hello, Node}, State) ->
+	log:info("~p has joined the cluster!", [Node]),
 	{noreply, sets:add_element(Node, State)};
 
 handle_cast(stop, State) ->
@@ -110,22 +125,14 @@ code_change(_OldVsn, State, _Extra) ->
 %% Internal Function Definitions
 %% ------------------------------------------------------------------
 
-%% @doc Scans all known remote nodes to find about new ones
-% @FIXME catch and filter offline nodes here
+%% @doc Scans all known remote nodes to find new ones
 remote_scan(RemoteNodes) ->
-	sets:fold(
-		fun(Node, Acc) ->
-			try gen_server:call({?DIST_SERVER, Node}, {remotes}) of
-				{ok, NodeSet} -> sets:union(Acc, NodeSet)
-			catch
-				_:_ -> Acc
-			end
-		end,
-		RemoteNodes, RemoteNodes).
+	State = broadcall(sets:del_element(node(), RemoteNodes), ?DIST_SERVER, {state_info}),
+	Online = sets:from_list(lists:map(fun({Node, Res}) -> Node end, State)),
+	Offline = sets:subtract(RemoteNodes, Online),
+	AllNodes = sets:union(lists:map(fun({Node, Res}) -> Res end, State)),
+	sets:add_element(node(), sets:subtract(AllNodes, Offline)).
 
-%% @doc Broadcasts own name to all nodes in the system
-say_hello(RemoteNodes) ->
-	broadcast(RemoteNodes, ?DIST_SERVER, {hello, node()}).
 
 broadcast(RemoteNodes, Process, Message) ->
 	sets:fold(
@@ -134,27 +141,38 @@ broadcast(RemoteNodes, Process, Message) ->
 		end,
 		[], RemoteNodes).
 
-broadcall_list(RemoteNodes, Process, Message) ->
+broadcall(RemoteNodes, Process, Message) ->
 	sets:fold(
 		fun(Node, Acc) ->
-			{ok, Res} = gen_server:call({Process, Node}, Message),
-			Acc++Res
+			try gen_server:call({Process, Node}, Message) of
+				{ok,	Res}	-> Acc++{Node, Res};
+				{error,	_}		-> Acc
+			catch
+				error:{timeout, _} -> Acc
+			end
 		end,
 		[], RemoteNodes).
 
-dispatch_put(RemoteNodes, Process, {request, Request, ReplyTo}=Message) ->
-	{_, BestNode, _} = sets:fold(
-		fun(Node, {Found, MinNode, MinFill}) ->
-			case Found of
-				true -> {Found, MinNode, MinFill};
-				false ->
-					case gen_server:call({Process, Node}, {request, Request#rreq{action=fnd}}) of
-						{true, found} -> {true, Node, 0};
-						{false, PercentFill} when PercentFill <  MinFill -> {false, Node, PercentFill};
-						{false, PercentFill} when PercentFill >= MinFill -> {false, MinNode, MinFill}
-					end
-			end
-		end,
-		{false, none, 100}, RemoteNodes),
-	log:info("DIST: dispatching PUT to ~p~n", [BestNode]),
-	gen_server:cast({Process, BestNode}, Message).
+% least_filled_node(RemoteNodes, RequiredCap) ->
+% 	Fills = broadcall(RemoteNodes, ?DIST_SERVER, {request_storage, RequiredCap}),
+% 	[H | _] = Fills,
+% 	return H.
+
+
+
+% dispatch_put(RemoteNodes, Process, {request, Request, ReplyTo}=Message) ->
+% 	{_, BestNode, _} = sets:fold(
+% 		fun(Node, {Found, MinNode, MinFill}) ->
+% 			case Found of
+% 				true -> {Found, MinNode, MinFill};
+% 				false ->
+% 					case gen_server:call({Process, Node}, {request, Request#rreq{action=fnd}}) of
+% 						{true, found} -> {true, Node, 0};
+% 						{false, PercentFill} when PercentFill <  MinFill -> {false, Node, PercentFill};
+% 						{false, PercentFill} when PercentFill >= MinFill -> {false, MinNode, MinFill}
+% 					end
+% 			end
+% 		end,
+% 		{false, none, 100}, RemoteNodes),
+% 	log:info("DIST: dispatching PUT to ~p~n", [BestNode]),
+% 	gen_server:cast({Process, BestNode}, Message).

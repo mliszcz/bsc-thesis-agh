@@ -10,13 +10,13 @@
 
 run() ->
 	receive
-		{ReplyTo, #rreq{} = Request} ->
+		{ReplyTo, #request{} = Request} ->
 			gen_server:reply(ReplyTo, core:handle_req(Request))
 	end,
 	run().
 
 %% @def pushes request to associated executor and returns immediately
-push(ReplyTo, #rreq{user_id = UserId, v_path = VPath}=Request) ->
+push(ReplyTo, #request{user = UserId, path = VPath}=Request) ->
 	get_executor(UserId++VPath) ! {ReplyTo, Request},
 	{ok, request_pushed}.
 

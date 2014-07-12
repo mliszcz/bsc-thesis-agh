@@ -7,58 +7,60 @@
 -export([ handle_req/1 ]).
 
 handle_req(
-	#rreq{
-		action=get,
-		user_id=UserId,
-		v_path=VPath
+	#request{
+		type=create,
+		user=UserId,
+		path=VPath
 	}=Request) ->
-	log:info("CORE: GET request ~s~n", [VPath]),
+	log:info("create ~s", [VPath]),
 	case metadata:get(UserId, VPath) of
-		{error, _} ->
-			log:warn("CORE: nonexistent file requested ~s~n", [VPath]),
-			{error, not_found};	
+		{ok,	_} -> log:warn("file exists!"), {error, file_exists};
+		{error,	_} -> create_file(Request)
+	end;
+
+handle_req(
+	#request{
+	type=update,
+	user=UserId,
+	path=VPath
+	}=Request) ->
+	log:info("update ~s", [VPath]),
+	case metadata:get(UserId, VPath) of
+		{error,	_} -> log:warn("file not exists!"), {error, not_found};
+		{ok,	_} -> create_file(Request)
+	end;
+
+handle_req(
+	#request{
+		type=read,
+		user=UserId,
+		path=VPath
+	}) ->
+	log:info("read ~s", [VPath]),
+	case metadata:get(UserId, VPath) of
+		{error, _} -> log:warn("file not exists"), {error, not_found};	
 		{ok, File} ->
-			metadata:modify(File#file{last_access=util:timestamp()}),
-			{ ok, Data } = files:read(File#file.local_id),
-			log:info("CORE: serving ~s, (~w bytes)~n", [VPath, byte_size(Data)]),
+			metadata:modify(File#filedesc{last_access=util:timestamp()}),
+			{ok, Data} = files:read(File#filedesc.internal_id),
+			log:info("serving ~s, (~w bytes)", [VPath, byte_size(Data)]),
 			{ok, Data}
 	end;
 
-
 handle_req(
-	#rreq{
-		action=put,
-		user_id=UserId,
-		v_path=VPath,
-		put_path=PPath,
-		put_data=PData
-	}=Request) ->
-	log:info("CORE: PUT request ~s~n", [VPath]),
+	#request{
+		type=delete,
+		user=UserId,
+		path=VPath
+	}) ->
+	log:info("delete ~s", [VPath]),
 	case metadata:get(UserId, VPath) of
-		{error, _} ->
-			log:info("CORE: nonexistent file requested ~s, creating...~n", [VPath]),
-			create_file(Request);
+		{error, _} -> log:warn("file not exists"), {error, not_found};	
 		{ok, File} ->
-			log:info("CORE: existing file requested ~s, updating...~n", [VPath]),
-			update_file(Request)
-	end;
-
-
-handle_req(
-	#rreq{
-		action=del,
-		user_id=UserId,
-		v_path=VPath
-	}=Request) ->
-
-	log:info("CORE: deleting ~s!~n", [VPath]),
-
-	{ok, File} = metadata:get(UserId, VPath),
-	globals:set(fill, globals:get(fill)-File#file.size),
-	
-	metadata:delete(File),
-	files:delete(File#file.local_id),	
-	{ok, deleted}.
+			globals:set(fill, globals:get(fill)-File#filedesc.size),
+			metadata:delete(File),
+			files:delete(File#filedesc.internal_id),
+			{ok, deleted}
+	end.
 
 
 %% ------------------------------------------------------------------
@@ -67,51 +69,23 @@ handle_req(
 
 
 create_file(
-	#rreq{
-		action=put,
-		user_id=UserId,
-		v_path=VPath,
-		put_path=PPath,
-		put_data=PData
-	}=Request) ->
+	#request{
+		user=UserId,
+		path=VPath,
+		data=PData
+	}) ->
 
-	File = #file{owner_id		= UserId,
-				 last_access	= util:timestamp(),
-				 size			= byte_size(PData),
-				 v_path			= VPath},
+	File = #filedesc {
+		path = VPath,
+		user = UserId,
+		size = byte_size(PData),
+		last_access	= util:timestamp()
+		},
 	
-	{ok, #file{local_id=NewId}} = metadata:create(File),
+	{ok, #filedesc{internal_id=NewId}} = metadata:create(File),
 	%% storage reserved on dispatching
 	%% globals:set(fill, globals:get(fill)+byte_size(Data)),
 	
 	files:write(NewId, PData),
-	log:info("CORE: file ~s  created!~n", [VPath]),
+	log:info("file ~s  created!", [VPath]),
 	{ok, created}.
-
-
-update_file(
-	#rreq{
-		action=put,
-		user_id=UserId,
-		v_path=VPath,
-		put_path=PPath,
-		put_data=PData
-	}=Request) ->
-
-	Path = case PPath of
-		none -> VPath;
-		_ ->PPath
-	end,
-
-	Data = case PData of
-		none ->
-			{ok, OldData} = handle_req(Request#rreq{action=get}),
-			OldData;
-		_ -> PData
-	end,
-
-	log:info("CORE: recreating ~s  on update!~n", [VPath]),
-	create_file(Request#rreq{v_path=Path, put_data=Data}),
-	%% FIXME update metadata
-	%% TODO refactor that CRAP
-	{ok, updated}.

@@ -20,10 +20,10 @@
 		]).
 
 init(FileMetaLocation) ->
-	ets:new(memDb, [named_table, public, { keypos, #file.local_id }]),
+	ets:new(memDb, [named_table, public, { keypos, #filedesc.internal_id }]),
 	dets:open_file(perDb, [
 						   	{ file, FileMetaLocation },
-						  	{ keypos, #file.local_id }
+						  	{ keypos, #filedesc.internal_id }
 					]),
 	dets:to_ets(perDb, memDb),
 	ok.
@@ -33,39 +33,41 @@ deinit() ->
 	dets:close(perDb),
 	ok.
 
-create(#file{} = File) ->
-	InsFile = File#file{ local_id = uuid:generate() },
+create(#filedesc{} = File) ->
+	InsFile = File#filedesc{ internal_id = uuid:generate() },
 	modify(InsFile).
 
-modify(#file{} = File) ->
+modify(#filedesc{} = File) ->
 	ets:insert(memDb, File),
 	dets:insert(perDb, File),
 	{ ok, File }.
 
-delete(#file{} = File) ->
-	ets:delete(memDb, File#file.local_id),
-	dets:delete(perDb, File#file.local_id).
+delete(#filedesc{} = File) ->
+	ets:delete(memDb, File#filedesc.internal_id),
+	dets:delete(perDb, File#filedesc.internal_id).
 
 get(UserId, VPath) ->
-	case ets:match_object(memDb, #file{ owner_id = UserId,
-										v_path = VPath,
-										_ = '_'
-									  }) of
+	case ets:match_object(memDb,
+			#filedesc{
+				user = UserId,
+				path = VPath,
+				_ = '_'
+			}) of
 		[File]	-> { ok, File };
 		[]		-> { error, not_found };
 		_		-> { error, too_many }
 	end.
 
 get(UserId) ->
-	ets:match_object(memDb, #file{ owner_id = UserId, _ = '_' }).
+	ets:match_object(memDb, #filedesc{ user = UserId, _ = '_' }).
 
 to_list() ->
 	ets:tab2list(memDb).
 
 dump() ->
 	ets:foldl(fun(Elem, _Acc) ->
-					  Name = Elem#file.v_path,
-					  Id = Elem#file.local_id,
+					  Name = Elem#filedesc.path,
+					  Id = Elem#filedesc.internal_id,
 					  io:format("file ~s as ~s~n", [Name, Id]),
 					  _Acc
 			  end, [], memDb).
