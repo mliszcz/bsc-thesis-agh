@@ -39,4 +39,3 @@ init(_Args) ->
 		?CHILD(?HTTP_SERVER, worker)
 	],
 	{ok, { {one_for_one, 5, 10}, Children} }.
-
