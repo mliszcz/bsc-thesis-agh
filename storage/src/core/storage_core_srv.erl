@@ -30,6 +30,7 @@ start_link() ->
 	gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
 stop() ->
+	log:info("shutdown"),
 	gen_server:cast(?SERVER, stop).
 
 %% ------------------------------------------------------------------
@@ -37,6 +38,8 @@ stop() ->
 %% ------------------------------------------------------------------
 
 init(_Args) ->
+
+	process_flag(trap_exit, true),	% this is left for the sake of example and will be removed
 
 	ets:new(?EXECUTORS, [named_table, public, {heir, whereis(init), nothing} ]),
 
@@ -122,6 +125,7 @@ handle_info(_Info, State) ->
 	{noreply, State}.
 
 terminate(_Reason, _State) ->
+	log:info("closing"),
 	ok.
 
 code_change(_OldVsn, State, _Extra) ->

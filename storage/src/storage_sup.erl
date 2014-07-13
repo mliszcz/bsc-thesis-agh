@@ -6,7 +6,7 @@
 -behaviour(supervisor).
 
 %% API
--export([start_link/0, stop/0]).
+-export([start_link/0]).
 
 %% Supervisor callbacks
 -export([init/1]).
@@ -21,12 +21,18 @@
 start_link() ->
 	supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
-stop() ->
-	% gen_server:cast(storage_http_srv, stop).
-	% io:format("terminated~n", []),
-	% supervisor:terminate_child(?MODULE, ?HTTP_SERVER),
-	% io:format("terminated~n", []).
-	ok.																%% @FIXME
+%% this should be stopped by application master automatically
+
+% stop() ->
+% 	log:info("termintating itself!"),
+% 	% log:info("children ~p", [supervisor:which_children(whereis(?MODULE))] ),
+% 	log:info("terminated"),
+% 	% exit(whereis(?MODULE), kill),
+% 	% gen_server:cast(storage_http_srv, stop).
+% 	% io:format("terminated~n", []),
+% 	% supervisor:terminate_child(?MODULE, ?HTTP_SERVER),
+% 	% io:format("terminated~n", []).
+% 	ok.																%% @FIXME
 
 %% ===================================================================
 %% Supervisor callbacks

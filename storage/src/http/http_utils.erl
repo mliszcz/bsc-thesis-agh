@@ -1,7 +1,7 @@
 %% @author Michal Liszcz
 %% @doc Module for processing http request and responses
 
--module(http_util).
+-module(http_utils).
 -include("shared.hrl").
 
 %% ====================================================================

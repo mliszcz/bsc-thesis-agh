@@ -27,6 +27,7 @@ start_link() ->
 	gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
 stop() ->
+	log:info("shutdown"),
 	gen_server:cast(?SERVER, stop).
 
 %% ------------------------------------------------------------------
@@ -108,6 +109,7 @@ handle_info(_Info, State) ->
 	{noreply, State}.
 
 terminate(_Reason, _State) ->
+	log:info("closing"),
 	ok.
 
 code_change(_OldVsn, State, _Extra) ->

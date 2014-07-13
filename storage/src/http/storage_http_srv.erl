@@ -26,6 +26,7 @@ start_link() ->
 	gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
 stop() ->
+	log:info("shutdown"),
 	gen_server:cast(?SERVER, stop).	%% @FIXME this is never called
 
 %% ------------------------------------------------------------------
@@ -44,6 +45,7 @@ handle_call(_Request, _From, State) ->
 	{reply, ok, State}.
 
 handle_cast(stop, State) ->
+	log:info("stopping"),
 	gen_tcp:close(State),
 	{stop, normal, State}.
 
@@ -51,8 +53,8 @@ handle_info(_Info, State) ->
 	{noreply, State}.
 
 terminate(_Reason, State) ->
-	gen_tcp:close(State),
 	log:info("closing"),
+	gen_tcp:close(State),
 	ok.
 
 code_change(_OldVsn, State, _Extra) ->
@@ -70,7 +72,7 @@ listen(ListenSock) ->
 
 handle_request(Sock) ->
 	{ok, {http_request, Method, {_, Path}, _Version}} = gen_tcp:recv(Sock, 0),
-	log:info("accepted ~p from ~s (~s)", [Method, http_util:hostaddr(Sock), Path]),
+	log:info("accepted ~p from ~s (~s)", [Method, http_utils:hostaddr(Sock), Path]),
 	case {Method, Path} of
 		{'PUT',		_				} -> handle_put(Sock, Path);	% create
 		{'GET',		"/"				} -> handle_list(Sock, Path);	% 
@@ -87,44 +89,44 @@ handle_request(Sock) ->
 %%
 
 handle_put(Sock, Path) ->
-	{_Headers, StrData} = http_util:parse_request(Sock),
+	{_Headers, StrData} = http_utils:parse_request(Sock),
 	case storage_client_api:request_create(node(), Path, list_to_binary(StrData)) of
-		{ok,	created}		-> http_util:send_response(Sock, 'Created',		text);
-		{error,	file_exists}	-> http_util:send_response(Sock, 'NotAllowed',	text);
-		{error,	_}				-> http_util:send_response(Sock, 'BadRequest',	text)
+		{ok,	created}		-> http_utils:send_response(Sock, 'Created',		text);
+		{error,	file_exists}	-> http_utils:send_response(Sock, 'NotAllowed',	text);
+		{error,	_}				-> http_utils:send_response(Sock, 'BadRequest',	text)
 	end.
 
 handle_get(Sock, Path) ->
-	{_Headers, _} = http_util:parse_request(Sock),
+	{_Headers, _} = http_utils:parse_request(Sock),
 	case storage_client_api:request_read(node(), Path) of
-		{ok,	RawData}	-> http_util:send_response(Sock, 'OK',			file, binary_to_list(RawData));
-		{error, not_found}	-> http_util:send_response(Sock, 'NotFound',	text);
-		{error,	_}			-> http_util:send_response(Sock, 'BadRequest',	text)
+		{ok,	RawData}	-> http_utils:send_response(Sock, 'OK',			file, binary_to_list(RawData));
+		{error, not_found}	-> http_utils:send_response(Sock, 'NotFound',	text);
+		{error,	_}			-> http_utils:send_response(Sock, 'BadRequest',	text)
 	end.
 
 handle_post(Sock, Path) ->
-	{_Headers, StrData} = http_util:parse_request(Sock),
+	{_Headers, StrData} = http_utils:parse_request(Sock),
 	case storage_client_api:request_update(node(), Path, list_to_binary(StrData)) of
-		{ok,	_}			-> http_util:send_response(Sock, 'Accepted',	text);
-		{error, not_found}	-> http_util:send_response(Sock, 'NotFound',	text);
-		{error,	_}			-> http_util:send_response(Sock, 'BadRequest',	text)
+		{ok,	_}			-> http_utils:send_response(Sock, 'Accepted',	text);
+		{error, not_found}	-> http_utils:send_response(Sock, 'NotFound',	text);
+		{error,	_}			-> http_utils:send_response(Sock, 'BadRequest',	text)
 	end.
 
 handle_delete(Sock, Path) ->
-	{_Headers, _} = http_util:parse_request(Sock),
+	{_Headers, _} = http_utils:parse_request(Sock),
 	case storage_client_api:request_delete(node(), Path) of
-		{ok,	deleted}	-> http_util:send_response(Sock, 'Accepted',	text);
-		{error,	not_found}	-> http_util:send_response(Sock, 'NotFound',	text);
-		{error,	_}			-> http_util:send_response(Sock, 'BadRequest',	text)
+		{ok,	deleted}	-> http_utils:send_response(Sock, 'Accepted',	text);
+		{error,	not_found}	-> http_utils:send_response(Sock, 'NotFound',	text);
+		{error,	_}			-> http_utils:send_response(Sock, 'BadRequest',	text)
 	end.
 
 handle_list(Sock, _Path) ->
-	{_Headers, _} = http_util:parse_request(Sock),
+	{_Headers, _} = http_utils:parse_request(Sock),
 	case storage_client_api:request_list(node(), none_path) of
-		{ok,	ErlList}	-> http_util:send_response(Sock, 'OK',			text, lists:flatten(io_lib:format("~p", [ErlList])));
-		{error,	_}			-> http_util:send_response(Sock, 'BadRequest',	text)
+		{ok,	ErlList}	-> http_utils:send_response(Sock, 'OK',			text, lists:flatten(io_lib:format("~p", [ErlList])));
+		{error,	_}			-> http_utils:send_response(Sock, 'BadRequest',	text)
 	end.
 
 handle_other(Sock, _Path) ->
 	log:warn("unsupported operation requested"),
-	http_util:send_response(Sock, 'BadRequest', text).
+	http_utils:send_response(Sock, 'BadRequest', text).
