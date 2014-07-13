@@ -7,5 +7,5 @@ erl_crash.dump
 ebin/
 webServ/node_modules
 e
-node.config.work
+node.config
 npm-debug.log
