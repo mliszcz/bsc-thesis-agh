@@ -7,7 +7,7 @@
 %% ====================================================================
 %% API functions
 %% ====================================================================
--export([hostaddr/1, parse_request/1, send_response/2, send_response/3]).
+-export([hostaddr/1, parse_request/1, send_response/3, send_response/4]).
 
 hostaddr(Socket) ->
 	case inet:peername(Socket) of
@@ -40,10 +40,10 @@ parse_request(Sock) ->
 		_:_ -> {Headers, ""}
 	end.
 
-send_response(Sock, HttpStatus) ->
-	send_response(Sock, HttpStatus, "").
+send_response(Sock, HttpStatus, MimeType) ->
+	send_response(Sock, HttpStatus, MimeType, "").
 
-send_response(Sock, HttpStatus, StrData) ->
+send_response(Sock, HttpStatus, MimeType, StrData) ->
 	Resp = case HttpStatus of
 		'OK'			-> "HTTP/1.0 200 OK";
 		'Created'		-> "HTTP/1.0 201 Created";
@@ -55,15 +55,16 @@ send_response(Sock, HttpStatus, StrData) ->
 		'NotFound'		-> "HTTP/1.0 404 Not Found";
 		'ServerError'	-> "HTTP/1.0 500 Internal Server Error"
 	end,
-	MimeType = case StrData of
-		"" -> "text/plain";
-		_ -> "application/other"
+	Mime = case MimeType of
+		text	-> "text/plain";
+		file	-> "application/octet-stream";
+		_		-> "application/octet-stream"
 	end,
 	ResponseBody = case StrData of
-		"" -> Resp;
-		_ -> StrData
+		""	-> Resp;
+		_	-> StrData
 	end,
 	gen_tcp:send(Sock, iolist_to_binary(
 		io_lib:fwrite(
 			"~s\r\nContent-Type: ~s; charset=UTF-8\r\nContent-Length: ~p\r\n\r\n~s",
-			[Resp, MimeType, length(ResponseBody), ResponseBody]))).
+			[Resp, Mime, length(ResponseBody), ResponseBody]))).

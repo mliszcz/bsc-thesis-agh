@@ -89,42 +89,42 @@ handle_request(Sock) ->
 handle_put(Sock, Path) ->
 	{_Headers, StrData} = http_util:parse_request(Sock),
 	case storage_client_api:request_create(node(), Path, list_to_binary(StrData)) of
-		{ok,	created}		-> http_util:send_response(Sock, 'Created');
-		{error,	file_exists}	-> http_util:send_response(Sock, 'NotAllowed');
-		{error,	_}				-> http_util:send_response(Sock, 'BadRequest')
+		{ok,	created}		-> http_util:send_response(Sock, 'Created',		text);
+		{error,	file_exists}	-> http_util:send_response(Sock, 'NotAllowed',	text);
+		{error,	_}				-> http_util:send_response(Sock, 'BadRequest',	text)
 	end.
 
 handle_get(Sock, Path) ->
 	{_Headers, _} = http_util:parse_request(Sock),
 	case storage_client_api:request_read(node(), Path) of
-		{ok,	RawData}	-> http_util:send_response(Sock, 'OK', binary_to_list(RawData));
-		{error, not_found}	-> http_util:send_response(Sock, 'NotFound');
-		{error,	_}			-> http_util:send_response(Sock, 'BadRequest')
+		{ok,	RawData}	-> http_util:send_response(Sock, 'OK',			file, binary_to_list(RawData));
+		{error, not_found}	-> http_util:send_response(Sock, 'NotFound',	text);
+		{error,	_}			-> http_util:send_response(Sock, 'BadRequest',	text)
 	end.
 
 handle_post(Sock, Path) ->
 	{_Headers, StrData} = http_util:parse_request(Sock),
 	case storage_client_api:request_update(node(), Path, list_to_binary(StrData)) of
-		{ok,	_}			-> http_util:send_response(Sock, 'Accepted');
-		{error, not_found}	-> http_util:send_response(Sock, 'NotFound');
-		{error,	_}			-> http_util:send_response(Sock, 'BadRequest')
+		{ok,	_}			-> http_util:send_response(Sock, 'Accepted',	text);
+		{error, not_found}	-> http_util:send_response(Sock, 'NotFound',	text);
+		{error,	_}			-> http_util:send_response(Sock, 'BadRequest',	text)
 	end.
 
 handle_delete(Sock, Path) ->
 	{_Headers, _} = http_util:parse_request(Sock),
 	case storage_client_api:request_delete(node(), Path) of
-		{ok,	deleted}	-> http_util:send_response(Sock, 'Accepted');
-		{error,	not_found}	-> http_util:send_response(Sock, 'NotFound');
-		{error,	_}			-> http_util:send_response(Sock, 'BadRequest')
+		{ok,	deleted}	-> http_util:send_response(Sock, 'Accepted',	text);
+		{error,	not_found}	-> http_util:send_response(Sock, 'NotFound',	text);
+		{error,	_}			-> http_util:send_response(Sock, 'BadRequest',	text)
 	end.
 
 handle_list(Sock, _Path) ->
 	{_Headers, _} = http_util:parse_request(Sock),
 	case storage_client_api:request_list(node(), none_path) of
-		{ok,	ErlList}	-> http_util:send_response(Sock, 'OK', lists:flatten(io_lib:format("~p", [ErlList])));
-		{error,	_}			-> http_util:send_response(Sock, 'BadRequest')
+		{ok,	ErlList}	-> http_util:send_response(Sock, 'OK',			text, lists:flatten(io_lib:format("~p", [ErlList])));
+		{error,	_}			-> http_util:send_response(Sock, 'BadRequest',	text)
 	end.
 
 handle_other(Sock, _Path) ->
 	log:warn("unsupported operation requested"),
-	http_util:send_response(Sock, 'BadRequest').
+	http_util:send_response(Sock, 'BadRequest', text).
