@@ -12,16 +12,16 @@
 %% ===================================================================
 
 start(_StartType, [ConfigFilePath | _OtherArgs]) ->
-
-	globals:init(),	% @FIXME remove globals
-
-	{ok, Config} = file:consult(ConfigFilePath),
-	dict:fold(fun(K, V, _) -> util:set_env(K, V) end, 0, dict:from_list(Config)),
-	storage_sup:start_link().
+	case file:consult(ConfigFilePath) of
+		{ok, Config} ->
+			globals:init(),	% @FIXME remove globals
+			dict:fold(fun(K, V, _) -> util:set_env(K, V) end, 0, dict:from_list(Config)),
+			storage_sup:start_link();
+		{error, _} ->
+			{error, config_not_found}
+	end.
 
 stop(_State) ->
-	% storage_sup:stop(),
-	% exit(SupPid, terminate),
 	log:info("application stopped!"),
 	globals:deinit(),
 	ok.
