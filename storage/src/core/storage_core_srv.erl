@@ -116,7 +116,7 @@ handle_cast({request,
 	{noreply, State};
 
 handle_cast(stop, State) ->
-	io:format("shutdown"),
+	log:info("shutdown"),
 	ets:delete(?EXECUTORS),
 	metadata:deinit(),
 	{stop, normal, State}.
@@ -126,6 +126,8 @@ handle_info(_Info, State) ->
 
 terminate(_Reason, _State) ->
 	log:info("closing"),
+	ets:delete(?EXECUTORS),
+	metadata:deinit(),
 	ok.
 
 code_change(_OldVsn, State, _Extra) ->

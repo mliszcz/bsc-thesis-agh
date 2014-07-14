@@ -19,7 +19,7 @@ start(_StartType, [ConfigFilePath | _OtherArgs]) ->
 	dict:fold(fun(K, V, _) -> util:set_env(K, V) end, 0, dict:from_list(Config)),
 	storage_sup:start_link().
 
-stop(State) ->
+stop(_State) ->
 	% storage_sup:stop(),
 	% exit(SupPid, terminate),
 	log:info("application stopped!"),
