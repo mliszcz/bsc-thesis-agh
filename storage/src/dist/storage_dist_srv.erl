@@ -142,7 +142,9 @@ broadcall(RemoteNodes, Process, Message) ->
 				{ok,	Res}	-> Acc++[{Node, Res}];
 				{error,	_}		-> Acc
 			catch
-				error:{timeout, _} -> Acc
+				error:{timeout, _} -> Acc;
+				error:{{nodedown, Node}, _} -> Acc;
+				Type:Error -> log:error("broadcall ~w:~w", [Type, Error]), Acc
 			end
 		end,
 		[], RemoteNodes).
