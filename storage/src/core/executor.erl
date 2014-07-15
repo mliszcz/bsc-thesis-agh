@@ -10,7 +10,10 @@
 run() ->
 	receive
 		{ReplyTo, #request{} = Request} ->
-			gen_server:reply(ReplyTo, core:handle_req(Request))
+			case core:handle_req(Request) of
+				{ok,	_}=Result -> gen_server:reply(ReplyTo, Result);
+				{error,	_} -> pass
+			end
 	end,
 	run().
 
