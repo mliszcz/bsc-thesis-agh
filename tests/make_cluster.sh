@@ -1,4 +1,13 @@
+#!/bin/bash
 
+# 
+# make_cluster.sh storage cluster generator
+# author: Michal Liszcz
+# 
+# inside directory passed as argument, creates a storage_cluster dir, which contains
+# a number of storage nodes, each packed as a release, with own Erlang VM and config
+# then, copies cluster.sh, which allows you to control the cluster, into to that dir
+#
 
 if [ -z $1 ]; then
 	echo "usage $0 cluster/out/dir"
@@ -11,15 +20,19 @@ rm -rf $OUT_DIR 2>/dev/null
 mkdir -p $OUT_DIR
 
 
+echo 'for node in $(ls .) ; do starting $node ; $node/ ; done' > $OUT_DIR/start.sh
+chmod +x $OUT_DIR/start.sh
+
+
 # default options
 NODES=3
 QUOTA=1073741824	# 1 GB
-PREFIX=ds			# this will generate names $(PREFIX)1, $(PREFIX)2, ...
+PREFIX=ds			# this will generate names like $(PREFIX)1, $(PREFIX)2, ...
 COOKIE=ciastko
 INIT_NODE="${PREFIX}1@$(hostname -s)"
 PORTS=9001
 
-source cluster.properties
+source make_cluster.properties
 
 
 CURR=$(pwd) ; cd ..
@@ -29,6 +42,7 @@ cd $CURR
 
 NODENUM=1
 PORTNUM=$PORTS
+
 
 while [ $(( NODES-- )) -ne 0 ]; do
 
