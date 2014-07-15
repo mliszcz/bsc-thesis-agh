@@ -40,8 +40,8 @@ then
 	exit 1
 fi
 
-$OPT_NODE=""
-$MASS_ARGS=()
+OPT_NODE=""
+MASS_ARGS=()
 
 eval set -- "$ARGS"
 
@@ -81,7 +81,9 @@ elif [[ "start stop restart reboot ping getpid" =~ $MASS_ARGS ]]
 then
 	for node in $(ls .)
 	do
-		$node/bin/storage $MASS_ARGS
+		[ -f "$node/bin/storage" ] && \
+			printf "$node: " && \
+			$node/bin/storage $MASS_ARGS
 	done
 else
 	print_usage

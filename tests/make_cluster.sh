@@ -20,8 +20,8 @@ rm -rf $OUT_DIR 2>/dev/null
 mkdir -p $OUT_DIR
 
 
-echo 'for node in $(ls .) ; do starting $node ; $node/ ; done' > $OUT_DIR/start.sh
-chmod +x $OUT_DIR/start.sh
+cp cluster.sh $OUT_DIR/cluster.sh
+chmod +x $OUT_DIR/cluster.sh
 
 
 # default options
