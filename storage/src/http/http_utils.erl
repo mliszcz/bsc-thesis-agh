@@ -7,7 +7,7 @@
 %% ====================================================================
 %% API functions
 %% ====================================================================
--export([hostaddr/1, parse_request/1, send_response/3, send_response/4]).
+-export([hostaddr/1, parse_request/1, send_response/3, send_response/4, accept_request/1]).
 
 hostaddr(Socket) ->
 	case inet:peername(Socket) of
@@ -38,6 +38,22 @@ parse_request(Sock) ->
 		Length -> {Headers, fetch_body(Sock, list_to_integer(Length))}
 	catch
 		_:_ -> {Headers, ""}
+	end.
+
+accept_request(Sock) ->
+	{ok, {http_request, Method, {_, Path}, _Version}} = gen_tcp:recv(Sock, 0, ?TIMEOUT),
+	Headers = accept_headers(Sock, dict:new()),
+	Length = dict:fetch('Content-Length', Headers),
+	log:info("got length ~p !!", [Length]),
+	inet:setopts(Sock, [{packet, 4}]),
+	{ok, BinBody} = gen_tcp:recv(Sock, 0, 200000),
+	% log:info("received body: ~w", [BinBody]),
+	{ok, {Method, Path, Headers, BinBody}}.
+
+accept_headers(Sock, Headers) ->
+	case gen_tcp:recv(Sock, 0, ?TIMEOUT) of
+		{ok, {http_header, _, Header, _, Value}} -> accept_headers(Sock, dict:store(Header, Value, Headers));
+		{ok, http_eoh} -> Headers
 	end.
 
 send_response(Sock, HttpStatus, MimeType) ->

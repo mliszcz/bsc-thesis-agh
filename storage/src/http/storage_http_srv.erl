@@ -37,7 +37,7 @@ init(_Args) ->
 	log:info("starting http listener"),
 	{ok, ListenSock} = gen_tcp:listen(
 		util:get_env(http_port),
-		[list, {active, false}, {packet,http}, {reuseaddr, true}]),
+		[binary, {active, false}, {packet, http}, {reuseaddr, true}]),
 	spawn_link(?MODULE, listen, [ListenSock]),
 	{ok, ListenSock}.
 
@@ -71,8 +71,9 @@ listen(ListenSock) ->
 	end.	
 
 handle_request(Sock) ->
+	% {ok, {Method, Path, _Headers, BinaryData}} = http_utils:accept_request(Sock),
 	{ok, {http_request, Method, {_, Path}, _Version}} = gen_tcp:recv(Sock, 0),
-	log:info("accepted ~p from ~s (~s)", [Method, http_utils:hostaddr(Sock), Path]),
+	log:info("accepted ~p from ~s (~s), ~p bytes.", [Method, http_utils:hostaddr(Sock), Path, byte_size(BinaryData)]),
 	case {Method, Path} of
 		{'PUT',		_				} -> handle_put(Sock, Path);	% create
 		{'GET',		"/"				} -> handle_list(Sock, Path);	% 

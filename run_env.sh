@@ -3,4 +3,4 @@
 COOKIE=ciacho
 NAME=ds
 
-erl -setcookie $COOKIE -sname $NAME -pa storage/ebin 
+erl  +hms 700000000 -setcookie $COOKIE -sname $NAME -pa storage/ebin 
