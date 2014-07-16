@@ -54,6 +54,7 @@ handle_call({request, #request{type=create, path=Path, data=Data}=Request},
 			Size = byte_size(Data),
 			Fills = broadcall(State, ?CORE_SERVER, {reserve, Size}),
 			{_, Best} = lists:min(lists:map(fun({Node, Fill}) -> {Fill,Node} end, Fills)),
+			% TODO - handle case when system is full (Fills may be empty)!
 			gen_server:cast({?CORE_SERVER, Best}, {request, Request, From}),
 			broadcast(sets:del_element(Best, State), ?CORE_SERVER, {release, Size})
 		end),

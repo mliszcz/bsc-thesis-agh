@@ -7,7 +7,7 @@
 %% ====================================================================
 %% API functions
 %% ====================================================================
--export([hostaddr/1, parse_request/1, send_response/3, send_response/4, accept_request/1]).
+-export([hostaddr/1, parse_request/1, send_response/3, send_response/4]).
 
 hostaddr(Socket) ->
 	case inet:peername(Socket) of
@@ -28,7 +28,8 @@ fetch_headers(Sock, Headers) ->
 
 fetch_body(Sock, Length) ->
 	inet:setopts(Sock, [{packet, raw}]),
-	{ok, Body} = gen_tcp:recv(Sock, Length),
+	{ok, Body} = chunked_recv(Sock, << >>, Length),
+	% {ok, Body} = gen_tcp:recv(Sock, Length),	% this fails for large binaries (100+ MB)
 	Body.
 
 parse_request(Sock) ->
@@ -40,20 +41,15 @@ parse_request(Sock) ->
 		_:_ -> {Headers, ""}
 	end.
 
-accept_request(Sock) ->
-	{ok, {http_request, Method, {_, Path}, _Version}} = gen_tcp:recv(Sock, 0, ?TIMEOUT),
-	Headers = accept_headers(Sock, dict:new()),
-	Length = dict:fetch('Content-Length', Headers),
-	log:info("got length ~p !!", [Length]),
-	inet:setopts(Sock, [{packet, 4}]),
-	{ok, BinBody} = gen_tcp:recv(Sock, 0, 200000),
-	% log:info("received body: ~w", [BinBody]),
-	{ok, {Method, Path, Headers, BinBody}}.
-
-accept_headers(Sock, Headers) ->
-	case gen_tcp:recv(Sock, 0, ?TIMEOUT) of
-		{ok, {http_header, _, Header, _, Value}} -> accept_headers(Sock, dict:store(Header, Value, Headers));
-		{ok, http_eoh} -> Headers
+-define(CHUNK_SIZE, 16777216).	% 16 MB
+chunked_recv(Sock, Buffer, Size) ->
+	case Size =< ?CHUNK_SIZE of
+		true ->
+			{ok, Bin} = gen_tcp:recv(Sock, Size, 10000),
+			{ok, <<Buffer/binary, Bin/binary>>};
+		false ->
+			{ok, Bin} = gen_tcp:recv(Sock, ?CHUNK_SIZE, 10000),
+			chunked_recv(Sock, <<Buffer/binary, Bin/binary>>, Size-?CHUNK_SIZE)
 	end.
 
 send_response(Sock, HttpStatus, MimeType) ->

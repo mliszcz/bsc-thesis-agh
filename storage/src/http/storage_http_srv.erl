@@ -71,9 +71,8 @@ listen(ListenSock) ->
 	end.	
 
 handle_request(Sock) ->
-	% {ok, {Method, Path, _Headers, BinaryData}} = http_utils:accept_request(Sock),
 	{ok, {http_request, Method, {_, Path}, _Version}} = gen_tcp:recv(Sock, 0),
-	log:info("accepted ~p from ~s (~s), ~p bytes.", [Method, http_utils:hostaddr(Sock), Path, byte_size(BinaryData)]),
+	log:info("accepted ~p from ~s (~s), ~p bytes.", [Method, http_utils:hostaddr(Sock), Path, Method]),
 	case {Method, Path} of
 		{'PUT',		_				} -> handle_put(Sock, Path);	% create
 		{'GET',		"/"				} -> handle_list(Sock, Path);	% 
@@ -90,9 +89,9 @@ handle_request(Sock) ->
 %%
 
 handle_put(Sock, Path) ->
-	{_Headers, StrData} = http_utils:parse_request(Sock),
-	case storage_client_api:request_create(node(), Path, list_to_binary(StrData)) of
-		{ok,	created}		-> http_utils:send_response(Sock, 'Created',		text);
+	{_Headers, BinData} = http_utils:parse_request(Sock),
+	case storage_client_api:request_create(node(), Path, BinData) of
+		{ok,	created}		-> http_utils:send_response(Sock, 'Created',	text);
 		{error,	file_exists}	-> http_utils:send_response(Sock, 'NotAllowed',	text);
 		{error,	_}				-> http_utils:send_response(Sock, 'BadRequest',	text)
 	end.
