@@ -72,16 +72,25 @@ listen(ListenSock) ->
 
 handle_request(Sock) ->
 	{ok, {http_request, Method, {_, Path}, _Version}} = gen_tcp:recv(Sock, 0),
-	log:info("accepted ~p from ~s (~s), ~p bytes.", [Method, http_utils:hostaddr(Sock), Path, Method]),
-	case {Method, Path} of
-		{'PUT',		_				} -> handle_put(Sock, Path);	% create
-		{'GET',		"/"				} -> handle_list(Sock, Path);	% 
-		{'GET',		"/favicon.ico"	} -> handle_other(Sock, Path);	% browser crap
-		{'GET',		_				} -> handle_get(Sock, Path);	% read
-		{'POST',	_				} -> handle_post(Sock, Path);	% update
-		{'DELETE',	_				} -> handle_delete(Sock, Path);	% delete
-		_							  -> handle_other(Sock, Path)
+	log:info("accepted ~p from ~s (~s)", [Method, http_utils:hostaddr(Sock), Path]),
+	case Method of
+		'PUT'	-> handle_put(Sock, Path);
+		'GET'	-> handle_get(Sock, Path);
+		'POST'	-> handle_post(Sock, Path);
+		'DELETE'-> handle_delete(Sock, Path);
+		'HEAD'	-> handle_head(Sock, Path);
+		_		-> handle_other(Sock, Path)
 	end,
+	% case {Method, Path} of
+	% 	{'PUT',		_				} -> handle_put(Sock, Path);	% create
+	% 	{'GET',		"/"				} -> handle_list(Sock, Path);	% 
+	% 	{'GET',		"/favicon.ico"	} -> handle_other(Sock, Path);	% browser crap
+	% 	{'GET',		_				} -> handle_get(Sock, Path);	% read
+	% 	{'POST',	_				} -> handle_post(Sock, Path);	% update
+	% 	{'DELETE',	_				} -> handle_delete(Sock, Path);	% delete
+	% 	{'HEAD',	_ 				} -> handle_head(Sock, Path);	% find
+	% 	_							  -> handle_other(Sock, Path)
+	% end,
 	gen_tcp:close(Sock).
 
 %%
@@ -95,6 +104,16 @@ handle_put(Sock, Path) ->
 		{error,	file_exists}	-> http_utils:send_response(Sock, 'NotAllowed',	text);
 		{error,	_}				-> http_utils:send_response(Sock, 'BadRequest',	text)
 	end.
+
+handle_get(Sock, Path) when Path == "/" ->
+	{_Headers, _} = http_utils:parse_request(Sock),
+	case storage_client_api:request_list(node(), none_path) of
+		{ok,	ErlList}	-> http_utils:send_response(Sock, 'OK',			text, list_to_binary(lists:flatten(io_lib:format("~p", [ErlList]))));
+		{error,	_}			-> http_utils:send_response(Sock, 'BadRequest',	text)
+	end;
+
+handle_get(Sock, Path) when Path == "/favicon.ico" ->
+	http_utils:send_response(Sock, 'NotFound', text);
 
 handle_get(Sock, Path) ->
 	{_Headers, _} = http_utils:parse_request(Sock),
@@ -120,10 +139,11 @@ handle_delete(Sock, Path) ->
 		{error,	_}			-> http_utils:send_response(Sock, 'BadRequest',	text)
 	end.
 
-handle_list(Sock, _Path) ->
+handle_head(Sock, Path) ->
 	{_Headers, _} = http_utils:parse_request(Sock),
-	case storage_client_api:request_list(node(), none_path) of
-		{ok,	ErlList}	-> http_utils:send_response(Sock, 'OK',			text, list_to_binary(lists:flatten(io_lib:format("~p", [ErlList]))));
+	case storage_client_api:request_find(node(), Path) of
+		{ok,	Node	}	-> http_utils:send_response(Sock, 'OK',			text, list_to_binary(lists:flatten(io_lib:format("~p", [Node]))));
+		{error, not_found}	-> http_utils:send_response(Sock, 'NotFound',	text);
 		{error,	_}			-> http_utils:send_response(Sock, 'BadRequest',	text)
 	end.
 

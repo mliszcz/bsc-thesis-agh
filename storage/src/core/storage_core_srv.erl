@@ -88,6 +88,19 @@ handle_cast({release, HowMuch}, State) ->
 	globals:set(reserv, globals:get(reserv)-HowMuch),
 	{noreply, State};
 
+% handle_cast({request,
+% 	#request{
+% 		type=find,
+% 		path=Path,
+% 		user=User
+% 		}=_Request, ReplyTo}, {_Fill, _Quota}=State) ->
+
+% 	case metadata:get(User, Path) of
+% 		{ok, _} -> gen_server:reply(ReplyTo, {ok, node()});
+% 		_ -> pass
+% 	end,
+% 	{noreply, State};
+
 handle_cast({request,
 	#request{
 		type=_Type,

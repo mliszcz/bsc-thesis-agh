@@ -87,6 +87,15 @@ handle_call({request, #request{type=delete, path=Path}=Request},
 		end),
 	{noreply, State};
 
+handle_call({request, #request{type=find, path=Path}=Request},
+	From, State) ->
+	log:info("broadcasting find ~s", [Path]),
+	spawn_link(
+		fun() ->
+			broadcast(State, ?CORE_SERVER, {request, Request, From})
+		end),
+	{noreply, State};
+
 handle_call({request, #request{type=list}=Request}, From, State) ->
 	log:info("listing"),
 	spawn_link(
