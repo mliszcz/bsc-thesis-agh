@@ -38,24 +38,24 @@ parse_request(Sock) ->
 	try dict:fetch('Content-Length', Headers) of
 		Length -> {Headers, fetch_body(Sock, list_to_integer(Length))}
 	catch
-		_:_ -> {Headers, ""}
+		_:_ -> {Headers, << >>}
 	end.
 
--define(CHUNK_SIZE, 16777216).	% 16 MB
+-define(CHUNK_SIZE, 67108864). % 64 MB 16777216).	% 16 MB
 chunked_recv(Sock, Buffer, Size) ->
 	case Size =< ?CHUNK_SIZE of
 		true ->
-			{ok, Bin} = gen_tcp:recv(Sock, Size, 10000),
+			{ok, Bin} = gen_tcp:recv(Sock, Size, 10*?TIMEOUT),
 			{ok, <<Buffer/binary, Bin/binary>>};
 		false ->
-			{ok, Bin} = gen_tcp:recv(Sock, ?CHUNK_SIZE, 10000),
+			{ok, Bin} = gen_tcp:recv(Sock, ?CHUNK_SIZE, 10*?TIMEOUT),
 			chunked_recv(Sock, <<Buffer/binary, Bin/binary>>, Size-?CHUNK_SIZE)
 	end.
 
 send_response(Sock, HttpStatus, MimeType) ->
-	send_response(Sock, HttpStatus, MimeType, "").
+	send_response(Sock, HttpStatus, MimeType, << >>).
 
-send_response(Sock, HttpStatus, MimeType, StrData) ->
+send_response(Sock, HttpStatus, MimeType, BinData) ->
 	Resp = case HttpStatus of
 		'OK'			-> "HTTP/1.0 200 OK";
 		'Created'		-> "HTTP/1.0 201 Created";
@@ -72,11 +72,13 @@ send_response(Sock, HttpStatus, MimeType, StrData) ->
 		file	-> "application/octet-stream";
 		_		-> "application/octet-stream"
 	end,
-	ResponseBody = case StrData of
-		""	-> Resp;
-		_	-> StrData
+	ResponseBody = case BinData of
+		<< >>	-> list_to_binary(Resp);
+		_		-> BinData
 	end,
-	gen_tcp:send(Sock, iolist_to_binary(
-		io_lib:fwrite(
-			"~s\r\nContent-Type: ~s; charset=UTF-8\r\nContent-Length: ~p\r\n\r\n~s",
-			[Resp, Mime, length(ResponseBody), ResponseBody]))).
+
+	Headers = iolist_to_binary(io_lib:fwrite(
+			"~s\r\nContent-Type: ~s; charset=UTF-8\r\nContent-Length: ~p\r\n\r\n",
+			[Resp, Mime, byte_size(ResponseBody)])),
+
+	gen_tcp:send(Sock, << Headers/binary, ResponseBody/binary >>).

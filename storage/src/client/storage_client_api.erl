@@ -10,7 +10,8 @@
 	request_read/2,
 	request_update/3,
 	request_delete/2,
-	request_list/2
+	request_list/2,
+	request_find/2
 	]).
 
 request_create(Node, Path, Data) ->
@@ -50,6 +51,14 @@ request_delete(Node, Path) ->
 request_list(Node, Path) ->
 	gen_server:call({?SERVER, Node}, {request,
 			#request{	type = list,
+						user = "user01",
+						path = Path
+					}
+		}).
+
+request_find(Node, Path) ->
+	gen_server:call({?SERVER, Node}, {request,
+			#request{	type = find,
 						user = "user01",
 						path = Path
 					}

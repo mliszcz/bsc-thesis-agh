@@ -99,14 +99,14 @@ handle_put(Sock, Path) ->
 handle_get(Sock, Path) ->
 	{_Headers, _} = http_utils:parse_request(Sock),
 	case storage_client_api:request_read(node(), Path) of
-		{ok,	RawData}	-> http_utils:send_response(Sock, 'OK',			file, binary_to_list(RawData));
+		{ok,	RawData}	-> http_utils:send_response(Sock, 'OK',			file, RawData);
 		{error, not_found}	-> http_utils:send_response(Sock, 'NotFound',	text);
 		{error,	_}			-> http_utils:send_response(Sock, 'BadRequest',	text)
 	end.
 
 handle_post(Sock, Path) ->
-	{_Headers, StrData} = http_utils:parse_request(Sock),
-	case storage_client_api:request_update(node(), Path, list_to_binary(StrData)) of
+	{_Headers, BinData} = http_utils:parse_request(Sock),
+	case storage_client_api:request_update(node(), Path, BinData) of
 		{ok,	_}			-> http_utils:send_response(Sock, 'Accepted',	text);
 		{error, not_found}	-> http_utils:send_response(Sock, 'NotFound',	text);
 		{error,	_}			-> http_utils:send_response(Sock, 'BadRequest',	text)
@@ -123,7 +123,7 @@ handle_delete(Sock, Path) ->
 handle_list(Sock, _Path) ->
 	{_Headers, _} = http_utils:parse_request(Sock),
 	case storage_client_api:request_list(node(), none_path) of
-		{ok,	ErlList}	-> http_utils:send_response(Sock, 'OK',			text, lists:flatten(io_lib:format("~p", [ErlList])));
+		{ok,	ErlList}	-> http_utils:send_response(Sock, 'OK',			text, list_to_binary(lists:flatten(io_lib:format("~p", [ErlList]))));
 		{error,	_}			-> http_utils:send_response(Sock, 'BadRequest',	text)
 	end.
 
