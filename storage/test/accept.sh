@@ -13,11 +13,11 @@ function random {
 }
 
 function pass {
-	printf "$1\t[OK]"
+	printf "$1\t[OK]\n"
 }
 
 function fail {
-	printf "$1\t[FAIL] result: $2"
+	printf "$1\t[FAIL] result: $2\n"
 	exit 1
 }
 
@@ -30,62 +30,27 @@ TEST_REMOTE="storage/test/accept/test_file.dat"
 rm -f $TEST_INPUT > /dev/null 2>&1
 rm -f $TEST_OUTPUT > /dev/null 2>&1
 
-echo $(random 1342177) >> $TEST_INPUT		# 128 MB
+echo $(random 1342177) >> $TEST_INPUT		# 1.28 MB
 RESULT=$(curl -XPUT --data-binary @"$TEST_INPUT" "$STORAGE_NODE"/"$TEST_REMOTE" 2>/dev/null)
-
-if [ "$RESULT" == "HTTP/1.0 201 Created" ] # && pass "PUT" || fail "PUT" "$RESULT"
-then
-	echo "PUT      [OK]"
-else
-	echo "PUT      [FAIL] result: $RESULT"
-	exit 1
-fi
+[ "$RESULT" == "HTTP/1.0 201 Created" ] && pass "PUT" || fail "PUT" "$RESULT"
 
 
 RESULT=$(wget -O "$TEST_OUTPUT" "$STORAGE_NODE"/"$TEST_REMOTE" > /dev/null 2>&1)
-
-if diff "$TEST_INPUT" "$TEST_OUTPUT" >/dev/null
-then
-   echo "GET      [OK]"
-else
-   echo "GET      [FAIL]"
-   exit 1
-fi
+diff "$TEST_INPUT" "$TEST_OUTPUT" >/dev/null && pass "GET" || fail "GET" "diffrent files"
 
 
-echo $(random 1342177) >> $TEST_INPUT		# 256 MB
+echo $(random 1342177) >> $TEST_INPUT		# 2.56 MB
 RESULT=$(curl -XPOST --data-binary @"$TEST_INPUT" "$STORAGE_NODE"/"$TEST_REMOTE" 2>/dev/null)
-
-if [ "$RESULT" == "HTTP/1.1 202 Accepted" ]
-then
-	echo "POST     [OK]"
-else
-	echo "POST     [FAIL] result: $RESULT"
-	exit 1
-fi
+[ "$RESULT" == "HTTP/1.1 202 Accepted" ] && pass "POST" || fail "POST" "$RESULT"
 
 
 RESULT=$(wget -O "$TEST_OUTPUT" "$STORAGE_NODE"/"$TEST_REMOTE" > /dev/null 2>&1)
-
-if diff "$TEST_INPUT" "$TEST_OUTPUT" >/dev/null
-then
-   echo "GET      [OK]"
-else
-   echo "GET      [FAIL]"
-   exit 1
-fi
+diff "$TEST_INPUT" "$TEST_OUTPUT" >/dev/null && pass "GET" || fail "GET" "diffrent files"
 
 
 RESULT=$(curl -XDELETE "$STORAGE_NODE"/"$TEST_REMOTE" 2>/dev/null)
-
-if [ "$RESULT" == "HTTP/1.1 202 Accepted" ]
-then
-	echo "DELETE   [OK]"
-else
-	echo "DELETE   [FAIL] result: $RESULT"
-	exit 1
-fi
+[ "$RESULT" == "HTTP/1.1 202 Accepted" ] && pass "DELETE" || fail "DELETE" "$RESULT"
 
 
-# GET of empty file should be tested here
-# but timeout currently is not working :)
+RESULT=$(curl "$STORAGE_NODE"/"$TEST_REMOTE" 2>/dev/null)
+[ "$RESULT" == "HTTP/1.0 404 Not Found" ] && pass "GET" || fail "GET" "$RESULT"
