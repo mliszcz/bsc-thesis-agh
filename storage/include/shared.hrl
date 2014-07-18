@@ -4,7 +4,7 @@
 
 % -define(STORAGE_PROC, storage).
 % -define(SYSTEM_PROC, system).
--define(TIMEOUT, 1000).
+-define(TIMEOUT, 5000).
 
 % node server modules
 -define(CORE_SERVER, storage_core_srv).

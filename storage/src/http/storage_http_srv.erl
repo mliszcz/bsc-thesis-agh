@@ -101,6 +101,7 @@ handle_put(Sock, Path) ->
 	{_Headers, BinData} = http_utils:parse_request(Sock),
 	case storage_client_api:request_create(node(), Path, BinData) of
 		{ok,	created}		-> http_utils:send_response(Sock, 'Created',	text);
+		{error,	timeout}		-> http_utils:send_response(Sock, 'NotAllowed',	text);
 		{error,	file_exists}	-> http_utils:send_response(Sock, 'NotAllowed',	text);
 		{error,	_}				-> http_utils:send_response(Sock, 'BadRequest',	text)
 	end.
@@ -119,6 +120,7 @@ handle_get(Sock, Path) ->
 	{_Headers, _} = http_utils:parse_request(Sock),
 	case storage_client_api:request_read(node(), Path) of
 		{ok,	RawData}	-> http_utils:send_response(Sock, 'OK',			file, RawData);
+		{error,	timeout}	-> http_utils:send_response(Sock, 'NotFound',	text);
 		{error, not_found}	-> http_utils:send_response(Sock, 'NotFound',	text);
 		{error,	_}			-> http_utils:send_response(Sock, 'BadRequest',	text)
 	end.

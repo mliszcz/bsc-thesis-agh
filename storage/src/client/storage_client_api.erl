@@ -15,51 +15,33 @@
 	]).
 
 request_create(Node, Path, Data) ->
-	gen_server:call({?SERVER, Node}, {request,
-		#request{	type = create,
-					user = "user01",
-					path = Path,
-					data = Data
-				}
-		}).
+	dist_call(Node, {create, "user01", Path, Data}).
 
 request_read(Node, Path) ->
-	gen_server:call({?SERVER, Node}, {request,
-		#request{	type = read,
-					user = "user01",
-					path = Path
-				}
-		}).
+	dist_call(Node, {read, "user01", Path, none}).
 
 request_update(Node, Path, Data) ->
-	gen_server:call({?SERVER, Node}, {request,
-		#request{	type = update,
-					user = "user01",
-					path = Path,
-					data = Data
-				}
-		}).
+	dist_call(Node, {update, "user01", Path, Data}).
 
 request_delete(Node, Path) ->
-	gen_server:call({?SERVER, Node}, {request,
-			#request{	type = delete,
-						user = "user01",
-						path = Path
-					}
-		}).
+	dist_call(Node, {delete, "user01", Path, none}).
 
 request_list(Node, Path) ->
-	gen_server:call({?SERVER, Node}, {request,
-			#request{	type = list,
-						user = "user01",
-						path = Path
-					}
-		}).
+	dist_call(Node, {list, "user01", Path, none}).
 
 request_find(Node, Path) ->
-	gen_server:call({?SERVER, Node}, {request,
-			#request{	type = find,
-						user = "user01",
-						path = Path
+	dist_call(Node, {find, "user01", Path, none}).
+
+dist_call(Node, {Type, User, Path, Data}) ->
+	try gen_server:call({?SERVER, Node}, {request,
+			#request{	type = Type,
+						user = User,
+						path = Path,
+						data = Data
 					}
-		}).
+		}, ?TIMEOUT)
+	catch
+		exit:{timeout, _} -> {error, timeout};
+		_:{{nodedown, _}, _} -> {error, nodedown};
+		_:_	-> {error, unknown}
+	end.
