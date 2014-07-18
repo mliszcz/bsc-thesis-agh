@@ -23,6 +23,9 @@ mkdir -p $OUT_DIR
 cp cluster.sh $OUT_DIR/cluster.sh
 chmod +x $OUT_DIR/cluster.sh
 
+# just in case ...
+cp ../storage/test/accept.sh $OUT_DIR/accept.sh
+
 
 # default options
 NODES=3

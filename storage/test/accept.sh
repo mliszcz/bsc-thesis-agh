@@ -21,7 +21,16 @@ function fail {
 	exit 1
 }
 
-STORAGE_NODE="localhost:8090"
+
+if [ -n "$1" ]
+then
+	STORAGE_NODE=$1
+else
+	echo "gateway not specified!";
+	echo "usage: $0 host:address";
+	exit 1
+fi
+
 
 TEST_INPUT="/tmp/storage_accept_in"
 TEST_OUTPUT="/tmp/storage_accept_out"
