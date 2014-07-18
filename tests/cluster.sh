@@ -29,7 +29,8 @@ commands:
     console_boot <file>      (node only)
     attach                   (node only)
     remote_console           (node only)
-    upgrade                  (node only)"
+    upgrade                  (node only)
+    clean                    "
 }
 
 ARGS=$(getopt -n "$0" -o hn: -l "help,node:" -- "$@" 2>/dev/null)
@@ -70,9 +71,25 @@ do
 	esac
 done
 
+
+OPT_CLEAN=0
 for i; do
+	[ "$1" == "clean" ] && OPT_CLEAN=1
 	MASS_ARGS+=($i)
 done
+
+
+if (( OPT_CLEAN ))
+then
+	for node in $([ -n "$OPT_NODE" ] && echo $OPT_NODE || ls .)
+	do
+		[ -f "$node/bin/storage" ] && \
+			echo "removing $node data" && \
+			rm -rf $node/work_dir/* > /dev/null 2>&1
+	done
+	exit 0
+fi
+
 
 if [ -n "$OPT_NODE" ]
 then
