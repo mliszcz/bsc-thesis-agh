@@ -7,9 +7,17 @@
 # 
 # test PUT, POST, GET & DELETE methods
 #
+# generating large tests files requires some seconds,
+# but this is needed to test chunked request reading
+#
 
-function random {
-	cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w $1 | head -n 1
+function random_file {
+
+	# NOTE: openssl is required, but this is
+	# MUCH faster than reading from /dev/urandom
+	openssl rand -out $2 $(( $1 * 2**20 ))
+	
+	# dd if=/dev/urandom of=$2 bs=1M count=$1
 }
 
 function pass {
@@ -39,7 +47,7 @@ TEST_REMOTE="storage/test/accept/test_file.dat"
 rm -f $TEST_INPUT > /dev/null 2>&1
 rm -f $TEST_OUTPUT > /dev/null 2>&1
 
-echo $(random 1342177) >> $TEST_INPUT		# 1.28 MB
+random_file 128 $TEST_INPUT		# 128 MB
 RESULT=$(curl -XPUT --data-binary @"$TEST_INPUT" "$STORAGE_NODE"/"$TEST_REMOTE" 2>/dev/null)
 [ "$RESULT" == "HTTP/1.0 201 Created" ] && pass "PUT" || fail "PUT" "$RESULT"
 
@@ -48,7 +56,7 @@ RESULT=$(wget -O "$TEST_OUTPUT" "$STORAGE_NODE"/"$TEST_REMOTE" > /dev/null 2>&1)
 diff "$TEST_INPUT" "$TEST_OUTPUT" >/dev/null && pass "GET" || fail "GET" "diffrent files"
 
 
-echo $(random 1342177) >> $TEST_INPUT		# 2.56 MB
+random_file 256 $TEST_INPUT		# 256 MB
 RESULT=$(curl -XPOST --data-binary @"$TEST_INPUT" "$STORAGE_NODE"/"$TEST_REMOTE" 2>/dev/null)
 [ "$RESULT" == "HTTP/1.1 202 Accepted" ] && pass "POST" || fail "POST" "$RESULT"
 
