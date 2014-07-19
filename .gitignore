@@ -8,5 +8,6 @@ ebin/
 webServ/node_modules
 e
 node.config
+test.config
 npm-debug.log
 storage/rel/storage/
