@@ -1,6 +1,6 @@
 #!/bin/bash
 
-COOKIE=ciacho
+COOKIE=ciastko
 NAME=client
 
 cp storage/ebin/storage.beam tests/ebin

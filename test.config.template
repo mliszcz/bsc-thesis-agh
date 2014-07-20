@@ -7,14 +7,17 @@
 
 {gateway, "nodename@nodehost"}.		% node used in client api calls
 {cluster, "path/to/cluster"}.		% directory where the clustertool is located
+{cookie, 'ciastko'}.				% gateway cookie
 
 {threads, 1}.
-{iterations, 2}.
+{iterations, 5}.
 
-{file_size, 10*1024*1024}.			% bytes
+{file_size, 2048}.			% bytes
 
-{setup_clean, true}.				% call 'clustertool clean'
-{teardown_clean, true}.				% at setup / teardown
+{setup_clean, true}.		% call 'clustertool clean'
+{teardown_clean, true}.		% at setup / teardown
+
+{start_delay, 3000}.		% millis, give node time to configure itself
 
 {verbose, true}.
 {logfile, "path/to/result/output/file"}.

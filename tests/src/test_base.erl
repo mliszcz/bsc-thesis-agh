@@ -1,10 +1,10 @@
+%% @author Michal Liszcz
+%% @doc testing framework for storage server core (uses client api calls)
 
 -module(test_base).
 -define(VERBOSE, true).
 
-% -export([ test_create/0 ]).
-
--compile(export_all).
+-export([ test_create/0 ]).
 
 %% ===================================================================
 %% general runner
@@ -61,11 +61,4 @@ test_create() ->
 	end,
 
 	Result = test_case(SetupFun, ActionFun, TeardownFun),
-
-	% Result = run(fixture:config(threads), fixture:config(iterations), fun(N)->
-	% 	{ok, created} = storage:create(Node, integer_to_list(N), Binary)
-	% end),
-
-	% fixture:teardown(Fixture),
-
 	io:format("result is: ~p~n", [Result]).
