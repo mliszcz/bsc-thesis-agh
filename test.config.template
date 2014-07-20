@@ -20,4 +20,4 @@
 {start_delay, 3000}.		% millis, give node time to configure itself
 
 {verbose, true}.
-{logfile, "path/to/result/output/file"}.
+{logfile, "path/to/result/output/tests.log"}.

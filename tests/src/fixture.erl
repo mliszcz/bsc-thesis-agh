@@ -25,6 +25,8 @@ setup() ->
 
 	erlang:set_cookie(node(), config(cookie, Config)),
 
+	filelib:ensure_dir(config(logfile, Config)),
+
 	TempFile = "/tmp/storage_benchmark_test_file",
 	os:cmd(io_lib:format("openssl rand -out ~s $(( ~p ))", [TempFile, config(file_size, Config)])),
 
