@@ -12,7 +12,12 @@
 # various file sizes are used during the tests (4KB - 1GB)
 # 
 
-TMP="/tmp"
+if [ -z $1 ]; then
+	echo "usage $0 cluster/out/dir"
+	exit 1
+fi
+
+TMP=$1
 CWD="$( cd "$( dirname "$0" )/.." && pwd )"
 HOSTNAME=$(hostname -s)
 
@@ -36,7 +41,7 @@ function create_test_config {
 	cd $CWD
 	cat > test.config <<EOF
 {gateway, "ds1@$HOSTNAME"}.
-{cluster, "$CWD/storage_cluster"}.
+{cluster, "$TMP/storage_cluster"}.
 {cookie, 'benchmark'}.
 
 {threads, $1}.
@@ -72,15 +77,57 @@ function prepare_fixture {
 	# $3 - iterations
 	# $4 - size var name
 	# $5, $6 - setup / teardown cleanup
+	# $7 - logfile prefix
+
+	# create_cluster $1 				# call it explicitly!
+	create_test_config $2 $3 ${!4} \
+		$5 $6 "$7-$1n_$2t$4.log"
+}
+
+function test_cycle {
+	# $1 - nodes
+	# $2 - threads
+	# $3 - iterations
+	# $4 - size var name
 
 	create_cluster $1
-	create_test_config $2 $3 ${!4} \
-		true true "$1n_$2t$4.log"
-}
 
-function test_create {
-	prepare_fixture 5 3 10 _32M true true
+	prepare_fixture $1 $2 $3 $4 true false 'create'
 	execute_beam test_base shell_create
+
+	prepare_fixture $1 $2 $3 $4 false false 'read'
+	execute_beam test_base shell_read
+
+	prepare_fixture $1 $2 $3 $4 false true 'update'
+	execute_beam test_base shell_update
 }
 
-test_create
+
+# BENCHMARK PARAMETERS
+NODES=(1 2 5 10 20 50)
+THREADS=(1 2 5 10 20 50)
+SIZES=(_4K _512K _1M _32M _128M _512M)
+
+NODES=(1 2 3)
+THREADS=(1 2 5)
+SIZES=(_512K _32M)
+
+QUOTA=$(( 250 * 1024 * 1024 * 1024 ))  # 250 GB, max available disk space
+
+
+for node in ${NODES[@]}
+do
+	for size in ${SIZES[@]}
+	do
+		for thread in ${THREADS[@]}
+		do
+			echo "running cycle: $node nodes, $size sample, $thread threads"
+			ITER=$(( QUOTA / ( ${!size} * thread ) ))
+			(( ITER > 100 )) && ITER=100
+			echo "$ITER iterations"
+
+			test_cycle $node $thread $ITER $size
+
+		done
+	done
+done

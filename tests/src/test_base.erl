@@ -4,7 +4,14 @@
 -module(test_base).
 -define(VERBOSE, true).
 
--export([ test_create/0, shell_create/0 ]).
+-export([
+	test_create/0,
+	test_read/0,
+	test_update/0,
+	shell_create/0,
+	shell_read/0,
+	shell_update/0
+	]).
 
 %% ===================================================================
 %% general runner
@@ -54,22 +61,49 @@ test_case(SetupFun, JobFun, TeardownFun) ->
 %% tests
 %% ===================================================================
 
+setup_load_file(Fixture) ->
+	{ok, Binary} = file:read_file(fixture:config(file_name, Fixture)),
+	Node = fixture:config(gateway, Fixture),
+	{list_to_atom(Node), Binary}.
+
+teardown_pass(_) ->
+	pass.
+
+
 test_create() ->
-
-	SetupFun = fun(Fixture) ->
-		{ok, Binary} = file:read_file(fixture:config(file_name, Fixture)),
-		Node = fixture:config(gateway, Fixture),
-		{list_to_atom(Node), Binary}
-	end,
-
-	TeardownFun = fun(_) -> pass end,
 
 	ActionFun = fun({Node, Binary}, T, N) ->
 		{ok, created} = storage:create(Node, integer_to_list(T)++"-"++integer_to_list(N), Binary)
 	end,
 
-	Result = test_case(SetupFun, ActionFun, TeardownFun),
+	Result = test_case(fun setup_load_file/1, ActionFun, fun teardown_pass/1),
 	io:format("result is: ~p~n", [Result]).
+
+
+test_read() ->
+
+	SetupFun = fun(Fixture) ->
+		Node = fixture:config(gateway, Fixture),
+		list_to_atom(Node)
+	end,
+
+	ActionFun = fun(Node, T, N) ->
+		{ok, _} = storage:read(Node, integer_to_list(T)++"-"++integer_to_list(N))
+	end,
+
+	Result = test_case(SetupFun, ActionFun, fun teardown_pass/1),
+	io:format("result is: ~p~n", [Result]).
+
+
+test_update() ->
+
+	ActionFun = fun({Node, Binary}, T, N) ->
+		{ok, updated} = storage:update(Node, integer_to_list(T)++"-"++integer_to_list(N), Binary)
+	end,
+
+	Result = test_case(fun setup_load_file/1, ActionFun, fun teardown_pass/1),
+	io:format("result is: ~p~n", [Result]).
+
 
 
 %% ===================================================================
@@ -78,3 +112,5 @@ test_create() ->
 
 shell_exec(Fun) -> Fun(), shell_default:q().
 shell_create() -> shell_exec(fun test_create/0). 
+shell_read() -> shell_exec(fun test_read/0). 
+shell_update() -> shell_exec(fun test_update/0). 
