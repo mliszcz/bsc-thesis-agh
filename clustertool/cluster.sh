@@ -12,6 +12,8 @@
 # 	cluster.sh --node ds2 ping 	- ping node ds2
 #
 
+CWD="$( cd "$( dirname "$0" )" && pwd )"
+
 function print_usage {
 	cat <<<\
 "usage: $0 [ -n <node> ] command
@@ -56,7 +58,7 @@ do
 			;;
 		-n|--node)
 			shift
-			if [ -f "$1/bin/storage" ]; then
+			if [ -f "$CWD/$1/bin/storage" ]; then
 				OPT_NODE=$1
 				shift
 			else
@@ -81,11 +83,11 @@ done
 
 if (( OPT_CLEAN ))
 then
-	for node in $([ -n "$OPT_NODE" ] && echo $OPT_NODE || ls .)
+	for node in $([ -n "$OPT_NODE" ] && echo $OPT_NODE || ls $CWD)
 	do
-		[ -f "$node/bin/storage" ] && \
+		[ -f "$CWD/$node/bin/storage" ] && \
 			echo "removing $node data" && \
-			rm -rf $node/work_dir/* > /dev/null 2>&1
+			rm -rf $CWD/$node/work_dir/* > /dev/null 2>&1
 	done
 	exit 0
 fi
@@ -93,14 +95,14 @@ fi
 
 if [ -n "$OPT_NODE" ]
 then
-	$OPT_NODE/bin/storage ${MASS_ARGS[@]}
+	$CWD/$OPT_NODE/bin/storage ${MASS_ARGS[@]}
 elif [[ "start stop restart reboot ping getpid" =~ $MASS_ARGS ]]
 then
-	for node in $(ls .)
+	for node in $(ls $CWD)
 	do
-		[ -f "$node/bin/storage" ] && \
+		[ -f "$CWD/$node/bin/storage" ] && \
 			printf "$node: " && \
-			$node/bin/storage $MASS_ARGS
+			$CWD/$node/bin/storage $MASS_ARGS
 	done
 else
 	print_usage
