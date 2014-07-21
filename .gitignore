@@ -11,3 +11,4 @@ node.config
 test.config
 npm-debug.log
 storage/rel/storage/
+benchmark/out/

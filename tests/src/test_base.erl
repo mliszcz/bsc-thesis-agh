@@ -4,7 +4,7 @@
 -module(test_base).
 -define(VERBOSE, true).
 
--export([ test_create/0 ]).
+-export([ test_create/0, shell_create/0 ]).
 
 %% ===================================================================
 %% general runner
@@ -70,3 +70,11 @@ test_create() ->
 
 	Result = test_case(SetupFun, ActionFun, TeardownFun),
 	io:format("result is: ~p~n", [Result]).
+
+
+%% ===================================================================
+%% exit immediately after test when run from shell
+%% ===================================================================
+
+shell_exec(Fun) -> Fun(), shell_default:q().
+shell_create() -> shell_exec(fun test_create/0). 
