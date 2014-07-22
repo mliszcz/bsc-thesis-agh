@@ -23,11 +23,16 @@ HOSTNAME=$(hostname -s)
 
 function create_cluster {
 	# creates cluster of size $1
+	# $2 - storage space limit
+	# $3 - per-handler memory limit
+
 	cd $CWD/clustertool
 	cp make_cluster.properties make_cluster.properties.old
 	echo "NODES=$1" >> make_cluster.properties
 	echo "COOKIE=benchmark" >> make_cluster.properties
 	echo "PREFIX=ds" >> make_cluster.properties
+	echo "QUOTA=$2" >> make_cluster.properties
+	echo "MEMORY=$3" >> make_cluster.properties
 
 	printf "creating cluster ..."
 	res=$(./make_cluster.sh $TMP)
@@ -81,7 +86,8 @@ function prepare_fixture {
 
 	# create_cluster $1 				# call it explicitly!
 	create_test_config $2 $3 ${!4} \
-		$5 $6 "$7-$1n_$2t$4.log"
+		  $5 $6 "$7-$1n.log"
+		# $5 $6 "$7-$1n_$2t$4.log"
 }
 
 function test_cycle {
@@ -90,7 +96,9 @@ function test_cycle {
 	# $3 - iterations
 	# $4 - size var name
 
-	create_cluster $1
+	# $5, $6 - storage and mem limit
+
+	create_cluster $1 $5 $6
 
 	prepare_fixture $1 $2 $3 $4 true false 'create'
 	execute_beam test_base shell_create
@@ -112,7 +120,12 @@ NODES=(1 2 3)
 THREADS=(1 2 5)
 SIZES=(_512K _32M)
 
-QUOTA=$(( 250 * 1024 * 1024 * 1024 ))  # 250 GB, max available disk space
+NODES=(2)
+THREADS=(5)
+SIZES=(_32M)
+
+QUOTA=$(( 250 * 1024 * 1024 * 1024 ))	# 250 GB, max available disk space
+MEMORY=$(( 5  * 1024 * 1024 * 1024 ))	# 5 GB, max available memory
 
 
 for node in ${NODES[@]}
@@ -122,11 +135,15 @@ do
 		for thread in ${THREADS[@]}
 		do
 			echo "running cycle: $node nodes, $size sample, $thread threads"
+
 			ITER=$(( QUOTA / ( ${!size} * thread ) ))
-			(( ITER > 100 )) && ITER=100
+			(( ITER > 50 )) && ITER=50
 			echo "$ITER iterations"
 
-			test_cycle $node $thread $ITER $size
+			DSK_LIM=$(( QUOTA / node ))
+			MEM_LIM=$(( MEMORY / ( 2 * thread ) ))
+
+			test_cycle $node $thread $ITER $size $DSK_LIM $MEM_LIM
 
 		done
 	done

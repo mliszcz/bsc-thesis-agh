@@ -46,12 +46,12 @@ init(_Args) ->
 
 	{ok, RemoteNodes}.
 
-handle_call({request, #request{type=create, path=Path, data=Data}=Request},
+handle_call({request, #request{type=create, path=Path}=Request},
 	From, State) ->
 	log:info("creating ~s", [Path]),
 	spawn_link(
 		fun() ->
-			Size = byte_size(Data),
+			Size = byte_size(Request#request.data),
 			Fills = broadcall(State, ?CORE_SERVER, {reserve, Size}),
 			{_, Best} = lists:min(lists:map(fun({Node, Fill}) -> {Fill,Node} end, Fills)),
 			% TODO - handle case when system is full (Fills may be empty)!

@@ -73,7 +73,10 @@ teardown_pass(_) ->
 test_create() ->
 
 	ActionFun = fun({Node, Binary}, T, N) ->
-		{ok, created} = storage:create(Node, integer_to_list(T)++"-"++integer_to_list(N), Binary)
+		case storage:create(Node, integer_to_list(T)++"-"++integer_to_list(N), Binary) of
+			{ok, created}	-> pass;
+			Other			-> io:format("create: ~p~n", [Other])
+		end
 	end,
 
 	Result = test_case(fun setup_load_file/1, ActionFun, fun teardown_pass/1),
@@ -88,7 +91,10 @@ test_read() ->
 	end,
 
 	ActionFun = fun(Node, T, N) ->
-		{ok, _} = storage:read(Node, integer_to_list(T)++"-"++integer_to_list(N))
+		case storage:read(Node, integer_to_list(T)++"-"++integer_to_list(N)) of
+			{ok, _}	-> pass;
+			Other	-> io:format("read: ~p~n", [Other])
+		end
 	end,
 
 	Result = test_case(SetupFun, ActionFun, fun teardown_pass/1),
@@ -98,7 +104,10 @@ test_read() ->
 test_update() ->
 
 	ActionFun = fun({Node, Binary}, T, N) ->
-		{ok, updated} = storage:update(Node, integer_to_list(T)++"-"++integer_to_list(N), Binary)
+		case storage:update(Node, integer_to_list(T)++"-"++integer_to_list(N), Binary) of
+			{ok, updated}	-> pass;
+			Other			-> io:format("update: ~p~n", [Other])
+		end
 	end,
 
 	Result = test_case(fun setup_load_file/1, ActionFun, fun teardown_pass/1),

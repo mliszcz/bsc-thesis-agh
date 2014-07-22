@@ -14,9 +14,9 @@
 {app_log_level, info}.
 
 {core_work_dir, "/absolute/or/relative/path/to/working/dir"}.
-{core_storage_quota, 1073741824}.	% 1GB
+{core_storage_quota,	1073741824}.	% 1GB
+{core_memory_quota,		134217728}.		% per-handler memory limit, exceeding triggers gc
 
 {dist_initial_node, "nodename@nodehost"}.
-{dist_storage_cap, 1073741824}.			% 1GB % deprecated !!!
 
 {http_port, 8090}.

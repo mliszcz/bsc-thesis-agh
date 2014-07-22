@@ -105,8 +105,7 @@ handle_cast({request,
 	#request{
 		type=_Type,
 		path=Path,
-		user=_User,
-		data=_Data
+		user=_User
 		}=Request, ReplyTo}, {_Fill, _Quota}=State) ->
 
 	log:info("requested ~s", [Path]),

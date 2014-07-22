@@ -30,6 +30,7 @@ cp ../storage/test/accept.sh $OUT_DIR/accept.sh
 # default options
 NODES=3
 QUOTA=1073741824	# 1 GB
+MEMORY=134217728	# 128 MB
 PREFIX=ds			# this will generate names like $(PREFIX)1, $(PREFIX)2, ...
 COOKIE=ciastko
 INIT_NODE="${PREFIX}1@$(hostname -s)"
@@ -62,7 +63,8 @@ while [ $(( NODES-- )) -ne 0 ]; do
 	cat >> $TARG/node.config <</EOF
 {app_log_level,			info}.
 {core_work_dir,			"work_dir"}.
-{core_storage_quota,	$QUOTA}.		% 1GB
+{core_storage_quota,	$QUOTA}.
+{core_memory_quota,		$MEMORY}.
 {dist_initial_node,		"$INIT_NODE"}.	
 {http_port,				$PORTNUM}.
 /EOF
