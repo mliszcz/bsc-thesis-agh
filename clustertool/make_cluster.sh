@@ -43,6 +43,9 @@ PORTS=9001
 source make_cluster.properties
 
 
+sed -i "s/LEADER=.*/LEADER=${INIT_NODE%%@$(hostname -s)}/g" $OUT_DIR/wait.sh
+
+
 CURR=$(pwd) ; cd ..
 make release NAME="derp" COOKIE=$COOKIE
 cd $CURR

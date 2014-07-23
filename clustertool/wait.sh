@@ -2,9 +2,12 @@
 
 CWD="$( cd "$( dirname "$0" )" && pwd )"
 
-NODENUM=$(find $CWD -maxdepth 1 -mindepth 1 -type d | wc -l)
+echo "$CWD"
 
-for node in $(find $CWD -maxdepth 1 -mindepth 1 -type d)
+NODENUM=$(find $CWD -maxdepth 1 -mindepth 1 -type d | wc -l)
+LEADER="ds1"
+
+for node in $LEADER
 do
 	printf "waiting for $node to configure ..."
 	while true
