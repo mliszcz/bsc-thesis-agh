@@ -18,5 +18,5 @@ do
 		(( COUNT % NODENUM == 0 )) && break
 		sleep 1
 	done
-	printf " done!"
+	printf " done!\n"
 done
