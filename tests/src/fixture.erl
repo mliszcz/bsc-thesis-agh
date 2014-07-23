@@ -38,7 +38,10 @@ setup() ->
 			false -> pass
 		end,
 		os:cmd(Clustertool++" start"),
-		timer:sleep(config(start_delay, Config))
+
+		% wait for the cluster to fully configure itself
+		timer:sleep(config(start_delay, Config)),
+		os:cmd("./wait.sh")
 	end),
 
 	dict:append(file_name, TempFile, Config).
