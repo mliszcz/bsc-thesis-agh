@@ -3,25 +3,173 @@
 (*** Wolfram Notebook File ***)
 (* http://www.wolfram.com/nb *)
 
-(* CreatedBy='Mathematica 9.0' *)
+(* CreatedBy='Mathematica 10.0' *)
 
 (*CacheID: 234*)
 (* Internal cache information:
 NotebookFileLineBreakTest
 NotebookFileLineBreakTest
-NotebookDataPosition[       157,          7]
-NotebookDataLength[       758,         33]
-NotebookOptionsPosition[       560,         21]
-NotebookOutlinePosition[       897,         36]
-CellTagsIndexPosition[       854,         33]
+NotebookDataPosition[       158,          7]
+NotebookDataLength[      5604,        186]
+NotebookOptionsPosition[      5259,        169]
+NotebookOutlinePosition[      5595,        184]
+CellTagsIndexPosition[      5552,        181]
 WindowFrame->Normal*)
 
 (* Beginning of Notebook Content *)
 Notebook[{
+Cell[BoxData[{
+ RowBox[{
+  RowBox[{
+  "outPath", "=", "\"\</home/michal/Documents/inz/inz/benchmark/out/\>\""}], 
+  ";"}], "\n", 
+ RowBox[{
+  RowBox[{
+   RowBox[{"cwdPath", "=", 
+    RowBox[{"NotebookDirectory", "[", "]"}]}], ";"}], 
+  "\n"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{"gNodes", "=", 
+   RowBox[{"{", 
+    RowBox[{"2", ",", "4"}], "}"}]}], ";"}], "\n", 
+ RowBox[{
+  RowBox[{"gSizes", "=", 
+   RowBox[{"{", 
+    RowBox[{"524288", ",", "1048576", ",", "4194304"}], "}"}]}], 
+  ";"}], "\n", 
+ RowBox[{
+  RowBox[{"gThred", "=", 
+   RowBox[{"{", "5", "}"}]}], ";"}], "\n", 
+ RowBox[{
+  RowBox[{
+   RowBox[{"gActon", "=", 
+    RowBox[{"{", 
+     RowBox[{"\"\<create\>\"", ",", "\"\<read\>\"", ",", "\"\<update\>\""}], 
+     "}"}]}], ";"}], "\n"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{
+   RowBox[{"MeanVal", "[", 
+    RowBox[{"iter_", ",", "data_"}], "]"}], ":=", 
+   RowBox[{
+    RowBox[{
+     RowBox[{
+      RowBox[{"{", 
+       RowBox[{
+        RowBox[{"Mean", "[", "data", "]"}], ",", 
+        RowBox[{"StandardDeviation", "[", "data", "]"}]}], "}"}], "/", 
+      RowBox[{"10", "^", "6"}]}], "/", "iter"}], "//", "N"}]}], ";"}], "\n", 
+ RowBox[{
+  RowBox[{
+   RowBox[{"ParsePhase1", "[", "readListResult_", "]"}], ":=", 
+   RowBox[{
+    RowBox[{
+     RowBox[{"{", 
+      RowBox[{"#1", ",", "#2", ",", 
+       RowBox[{"MeanVal", "[", 
+        RowBox[{"#3", ",", "#4"}], "]"}]}], "}"}], "&"}], "@@@", 
+    "readListResult"}]}], ";"}], "\n", 
+ RowBox[{
+  RowBox[{
+   RowBox[{"ParsePhase2", "[", 
+    RowBox[{"threadsNum_", ",", "readListResult_"}], "]"}], ":=", 
+   RowBox[{
+    RowBox[{
+     RowBox[{"Prepend", "[", 
+      RowBox[{"#", ",", "threadsNum"}], "]"}], "&"}], "/@", 
+    RowBox[{"ParsePhase1", "[", "readListResult", "]"}]}]}], ";"}], "\n", 
+ RowBox[{
+  RowBox[{
+   RowBox[{
+    RowBox[{"ParsePhase3", "[", "action_", "]"}], ":=", 
+    RowBox[{
+     RowBox[{
+      RowBox[{
+       RowBox[{"ParsePhase2", "[", 
+        RowBox[{"#", ",", 
+         RowBox[{"ReadList", "[", 
+          RowBox[{"outPath", "<>", "action", "<>", "\"\<-\>\"", "<>", 
+           RowBox[{"ToString", "[", "#", "]"}], "<>", "\"\<n.log\>\""}], 
+          "]"}]}], "]"}], "&"}], "/@", "gNodes"}], "//", 
+     RowBox[{
+      RowBox[{"Flatten", "[", 
+       RowBox[{"#", ",", "1"}], "]"}], "&"}]}]}], ";"}], 
+  "\[IndentingNewLine]", 
+  RowBox[{"(*", 
+   RowBox[{"Result", ":", 
+    RowBox[{"{", 
+     RowBox[{
+      RowBox[{"{", 
+       RowBox[{"nodes", ",", "size", ",", "threads", ",", 
+        RowBox[{"{", 
+         RowBox[{"mean", ",", "stddev"}], "}"}]}], "}"}], ",", "..."}], 
+     "}"}]}], "*)"}], "\n"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{"DataCreate", "=", 
+   RowBox[{"ParsePhase3", "[", "\"\<create\>\"", "]"}]}], ";"}], "\n", 
+ RowBox[{
+  RowBox[{"DataRead", "=", 
+   RowBox[{"ParsePhase3", "[", "\"\<read\>\"", "]"}]}], ";"}], "\n", 
+ RowBox[{
+  RowBox[{
+   RowBox[{"DataUpdate", "=", 
+    RowBox[{"ParsePhase3", "[", "\"\<update\>\"", "]"}]}], ";"}], 
+  "\n"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{
+   RowBox[{"GetData", "[", 
+    RowBox[{"collection_", ",", "node_", ",", "size_", ",", "thrd_"}], "]"}], 
+   ":=", 
+   RowBox[{
+    RowBox[{
+     RowBox[{"Cases", "[", 
+      RowBox[{"collection", ",", 
+       RowBox[{"{", 
+        RowBox[{"node", ",", "size", ",", "thrd", ",", "_"}], "}"}]}], "]"}], 
+     "[", 
+     RowBox[{"[", "1", "]"}], "]"}], "[", 
+    RowBox[{"[", "4", "]"}], "]"}]}], ";"}], "\n", 
+ RowBox[{
+  RowBox[{
+   RowBox[{"GetCreate", "[", 
+    RowBox[{"node_", ",", "size_", ",", "thrd_"}], "]"}], ":=", 
+   RowBox[{"GetData", "[", 
+    RowBox[{"DataCreate", ",", "node", ",", "size", ",", "thrd"}], "]"}]}], 
+  ";"}], "\n", 
+ RowBox[{
+  RowBox[{
+   RowBox[{"GetRead", "[", 
+    RowBox[{"node_", ",", "size_", ",", "thrd_"}], "]"}], ":=", 
+   RowBox[{"GetData", "[", 
+    RowBox[{"DataRead", ",", "node", ",", "size", ",", "thrd"}], "]"}]}], 
+  ";"}], "\n", 
+ RowBox[{
+  RowBox[{
+   RowBox[{"GetUpdate", "[", 
+    RowBox[{"node_", ",", "size_", ",", "thrd_"}], "]"}], ":=", 
+   RowBox[{"GetData", "[", 
+    RowBox[{"DataUpdate", ",", "node", ",", "size", ",", "thrd"}], "]"}]}], 
+  ";"}]}], "Input",
+ CellChangeTimes->{{3.615114747580512*^9, 3.61511474758103*^9}}],
+
+Cell[CellGroupData[{
+
+Cell[BoxData[
+ RowBox[{"GetRead", "[", 
+  RowBox[{"2", ",", 
+   RowBox[{"gSizes", "[", 
+    RowBox[{"[", "2", "]"}], "]"}], ",", "5"}], "]"}]], "Input",
+ CellChangeTimes->{{3.615114782634535*^9, 3.615114796958611*^9}, {
+  3.615114835957116*^9, 3.615114837614217*^9}}],
+
+Cell[BoxData[
+ RowBox[{"{", 
+  RowBox[{"0.016588716`", ",", "0.000704692001998036`"}], "}"}]], "Output",
+ CellChangeTimes->{3.615114797956271*^9, 3.6151148381157217`*^9}]
+}, Open  ]]
 },
-WindowSize->{740, 728},
-WindowMargins->{{150, Automatic}, {Automatic, 52}},
-FrontEndVersion->"9.0 for Linux x86 (64-bit) (February 7, 2013)",
+WindowSize->{808, 877},
+WindowMargins->{{1746, Automatic}, {Automatic, -1}},
+FrontEndVersion->"10.0 for Linux x86 (64-bit) (June 27, 2014)",
 StyleDefinitions->"Default.nb"
 ]
 (* End of Notebook Content *)
@@ -35,9 +183,13 @@ CellTagsIndex->{}
 *)
 (*NotebookFileOutline
 Notebook[{
+Cell[558, 20, 4220, 131, 605, "Input"],
+Cell[CellGroupData[{
+Cell[4803, 155, 267, 6, 32, "Input"],
+Cell[5073, 163, 170, 3, 32, "Output"]
+}, Open  ]]
 }
 ]
 *)
 
 (* End of internal cache information *)
-

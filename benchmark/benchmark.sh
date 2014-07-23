@@ -57,7 +57,7 @@ function create_test_config {
 {setup_clean, $4}.
 {teardown_clean, $5}.
 
-{start_delay, 3000}.
+{start_delay, 8000}.
 
 {verbose, true}.
 {logfile, "$CWD/benchmark/out/$6"}.
@@ -69,12 +69,13 @@ function execute_beam {
 	erl -sname client -pa tests/ebin storage/ebin -s $1 $2
 }
 
-_4K=$((   4    * 1024 ))
-_512K=$(( 512  * 1024 ))
+_4K=$((      4 * 1024 ))
+_512K=$((  512 * 1024 ))
 _1M=$((   1024 * 1024 ))
-_32M=$((  32   * $_1M ))
-_128M=$(( 128  * $_1M ))
-_512M=$(( 512  * $_1M ))
+_4M=$((      4 * $_1M ))
+_32M=$((    32 * $_1M ))
+_128M=$((  128 * $_1M ))
+_512M=$((  512 * $_1M ))
 
 function prepare_fixture {
 	# $1 - nodes
@@ -120,9 +121,9 @@ NODES=(1 2 3)
 THREADS=(1 2 5)
 SIZES=(_512K _32M)
 
-NODES=(2)
+NODES=(4)
 THREADS=(5)
-SIZES=(_32M)
+SIZES=(_512K _1M _4M)
 
 QUOTA=$(( 250 * 1024 * 1024 * 1024 ))	# 250 GB, max available disk space
 MEMORY=$(( 5  * 1024 * 1024 * 1024 ))	# 5 GB, max available memory
@@ -147,4 +148,13 @@ do
 
 		done
 	done
+done
+
+
+# mathematica-compatilbe results
+
+for log in $(ls $CWD/benchmark/out)
+do
+	sed -i 's/\[/{/g' $CWD/benchmark/out/$log
+	sed -i 's/\]/}/g' $CWD/benchmark/out/$log
 done
