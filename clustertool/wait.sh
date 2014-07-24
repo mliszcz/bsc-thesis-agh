@@ -7,6 +7,8 @@ echo "$CWD"
 NODENUM=$(find $CWD -maxdepth 1 -mindepth 1 -type d | wc -l)
 LEADER="ds1"
 
+MAXWAIT=30
+
 for node in $LEADER
 do
 	printf "waiting for $node to configure ..."
@@ -19,7 +21,11 @@ do
 		COUNT=$(( COUNT1 + COUNT2 + COUNT3 + COUNT4 ))
 
 		(( COUNT % NODENUM == 0 )) && break
+
 		sleep 1
+
+		(( --MAXWAIT == 0 )) && break
+		
 	done
 	printf " done!\n"
 done
