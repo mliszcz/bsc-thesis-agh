@@ -74,7 +74,11 @@ handle_call({request, #request{type=update, path=Path}=Request},
 	log:info("updating ~s", [Path]),
 	spawn_link(
 		fun() ->
-			broadcast(State, ?CORE_SERVER, {request, Request, From})
+			try gen_server:call({?DIST_SERVER, node()}, {request, Request#request{type=find, data=none}}) of
+				{ok, Node} -> gen_server:cast({?CORE_SERVER, Node}, {request, Request, From})
+			catch
+				_:{timeout, _} -> pass
+			end
 		end),
 	{noreply, State};
 

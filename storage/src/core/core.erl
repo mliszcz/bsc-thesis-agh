@@ -96,7 +96,19 @@ handle_req(
 		user=UserId
 	}) ->
 	log:info("list"),
-	metadata:get(UserId).
+	metadata:get(UserId);
+
+handle_req(
+	#request{
+		type=find,
+		user=User,
+		path=Path
+	}) ->
+	log:info("find ~s", [Path]),
+	case metadata:get(User, Path) of
+		{ok, _} -> {ok, node()};
+		_ -> {error, not_found}
+	end.
 
 
 %% ------------------------------------------------------------------
