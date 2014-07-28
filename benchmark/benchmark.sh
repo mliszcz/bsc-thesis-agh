@@ -73,7 +73,9 @@ _4K=$((      4 * 1024 ))
 _512K=$((  512 * 1024 ))
 _1M=$((   1024 * 1024 ))
 _4M=$((      4 * $_1M ))
+_16M=$((    16 * $_1M ))
 _32M=$((    32 * $_1M ))
+_64M=$((    64 * $_1M ))
 _128M=$((  128 * $_1M ))
 _512M=$((  512 * $_1M ))
 
@@ -121,9 +123,9 @@ NODES=(1 2 3)
 THREADS=(1 2 5)
 SIZES=(_512K _32M)
 
-NODES=(4)
+NODES=(5)
 THREADS=(5)
-SIZES=(_512K _1M _4M)
+SIZES=(_512K)
 
 QUOTA=$(( 250 * 1024 * 1024 * 1024 ))	# 250 GB, max available disk space
 MEMORY=$(( 5  * 1024 * 1024 * 1024 ))	# 5 GB, max available memory
@@ -138,7 +140,7 @@ do
 			echo "running cycle: $node nodes, $size sample, $thread threads"
 
 			ITER=$(( QUOTA / ( ${!size} * thread ) ))
-			(( ITER > 50 )) && ITER=50
+			(( ITER > 20 )) && ITER=20
 			echo "$ITER iterations"
 
 			DSK_LIM=$(( QUOTA / node ))
