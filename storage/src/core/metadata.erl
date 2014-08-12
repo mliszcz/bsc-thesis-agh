@@ -32,8 +32,14 @@ init(DatabaseLocation) ->
 	% 				{time, time}
 	% ]
 
-	case sqlite3:table_info(?DBNAME, ?TABNAME) of
-		table_does_not_exist ->
+	CheckQ = io_lib:format("select type from sqlite_master
+		where tbl_name = '~s' and type='table';", [?TABNAME]),
+	
+	Res = sqlite3:sql_exec(?DBNAME, CheckQ),
+
+	case Res of
+		[{columns, ["type"]}, {rows, ["table"]}] -> pass;
+		_ ->
 			% ok = sqlite3:create_table(metadata, files, TableInfo);
 			Query = io_lib:format("CREATE TABLE ~p (
 						path 			TEXT 		NOT NULL,
@@ -41,12 +47,11 @@ init(DatabaseLocation) ->
 						size 			INTEGER 	NOT NULL,
 						mode 			TEXT 		NOT NULL,
 						last_access 	INTEGER 	NOT NULL,
-						internal_id 	TEXT 		UNIQUE NOT NULL,
+						internal_id 	TEXT 		NOT NULL UNIQUE,
 
 						PRIMARY KEY (path, user)
 					);", [?TABNAME]),
-			sqlite3:sql_exec_script(?DBNAME, Query);
-		_ -> pass
+			sqlite3:sql_exec_script(?DBNAME, Query)
 	end.
 
 deinit() ->
