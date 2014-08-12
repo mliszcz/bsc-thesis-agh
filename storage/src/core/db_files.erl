@@ -17,6 +17,7 @@
 		 select/2,
 		 select_by_owner/1,
 		 select_all/0,
+		 exists/2,
 		 calculate_total_size/0
 		]).
 
@@ -27,8 +28,8 @@ init(DatabaseLocation) ->
 	sqlite3:sql_exec_script(?DBNAME,
 		"CREATE TABLE IF NOT EXISTS files (
 			id 				INTEGER 	NOT NULL PRIMARY KEY AUTOINCREMENT,
-			vpath 			TEXT 		NOT NULL,
 			owner 			INTEGER 	NOT NULL,
+			vpath 			TEXT 		NOT NULL,
 			bytes 			INTEGER 	NOT NULL,
 			location 		TEXT 		NOT NULL,
 			access_mode 	INTEGER 	NOT NULL,
@@ -50,10 +51,10 @@ create(#file{} = Entity) ->
 		},
 
 	sqlite3:sql_exec(?DBNAME,
-		"INSERT INTO files (vpath, owner, bytes, location, access_mode, create_time)
-					VALUES (:vpath, :owner, :bytes, :locat, :acces, :ctime);", [
-						{':vpath', Entity#file.vpath},
+		"INSERT INTO files (owner, vpath, bytes, location, access_mode, create_time)
+					VALUES (:owner, :vpath, :bytes, :locat, :acces, :ctime);", [
 						{':owner', Entity#file.owner},
+						{':vpath', Entity#file.vpath},
 						{':bytes', Entity#file.bytes},
 						{':locat', Entity#file.location},
 						{':acces', Entity#file.access_mode},
@@ -61,9 +62,9 @@ create(#file{} = Entity) ->
 		]),
 
 	[{columns, ["id"]}, {rows, [{NewId}]}] = sqlite3:sql_exec(?DBNAME,
-		"SELECT id FROM files WHERE vpath = :vpath AND owner = :owner;", [
-			{':vpath', Entity#file.vpath},
+		"SELECT id FROM files WHERE owner = :owner AND vpath = :vpath;", [
 			{':owner', Entity#file.owner},
+			{':vpath', Entity#file.vpath}
 		]),
 
 	NewEntity#file {id=NewId}.
@@ -73,15 +74,15 @@ update(#file{} = Entity) ->
 
 	sqlite3:sql_exec(?DBNAME,
 		"UPDATE files SET
-						vpath 		= :vpath,
 						owner 		= :owner,
+						vpath 		= :vpath,
 						bytes 		= :bytes,
 						location 	= :locat,
 						access_mode = :acces,
 						create_time = :ctime
 					WHERE id = :ident;", [
-						{':vpath', Entity#file.vpath},
 						{':owner', Entity#file.owner},
+						{':vpath', Entity#file.vpath},
 						{':bytes', Entity#file.bytes},
 						{':locat', Entity#file.location},
 						{':acces', Entity#file.access_mode},
@@ -92,17 +93,17 @@ update(#file{} = Entity) ->
 	Entity.
 
 
-delete(#filedesc{} = File) ->
+delete(#file{} = Entity) ->
 	sqlite3:sql_exec(?DBNAME, "DELETE FROM files WHERE id = :id;", [{':id', Entity#file.id}]).
 
 
 select(VPath, Owner) ->
 
 	case sqlite3:sql_exec(?DBNAME, 
-		"SELECT id, vpath, owner, bytes, location, access_mode, create_time
-				FROM files WHERE vpath = :vpath AND owner = :owner;", [
-				{':vpath', VPath},
-				{':owner', Owner}
+		"SELECT id, owner, vpath, bytes, location, access_mode, create_time
+				FROM files WHERE owner = :owner vpath = :vpath;", [
+				{':owner', Owner},
+				{':vpath', VPath}
 				]) of
 
 		[{columns, _}, {rows, [RowTuple]}] -> {ok, instantiate_file(RowTuple)};
@@ -113,7 +114,7 @@ select(VPath, Owner) ->
 select_by_owner(Owner) ->
 	
 	case sqlite3:sql_exec(?DBNAME, 
-		"SELECT id, vpath, owner, bytes, location, access_mode, create_time
+		"SELECT id, owner, vpath, bytes, location, access_mode, create_time
 				FROM files WHERE owner = :owner;", [{':owner', Owner}]) of
 
 		[{columns, _}, {rows, ListOfRows}] -> {ok, [instantiate_file(Row) || Row <- ListOfRows]};
@@ -124,10 +125,23 @@ select_by_owner(Owner) ->
 select_all() ->
 	
 	case sqlite3:sql_exec(?DBNAME, 
-		"SELECT id, vpath, owner, bytes, location, access_mode, create_time FROM files;") of
+		"SELECT id, owner, vpath, bytes, location, access_mode, create_time FROM files;") of
 
 		[{columns, _}, {rows, ListOfRows}] -> {ok, [instantiate_file(Row) || Row <- ListOfRows]};
 		_ -> {ok, []}
+	end.
+
+
+exists(VPath, Owner) ->
+
+	case sqlite3:sql_exec(?DBNAME, 
+		"SELECT EXISTS (SELECT 1 FROM filesWHERE owner = :owner AND vpath = :vpath LIMIT 1);", [
+		{':owner', Owner},
+		{':vpath', VPath}
+		]) of
+
+		[{columns, _}, {rows, [{1}]}] -> true;
+		_ -> false
 	end.
 
 
@@ -136,16 +150,16 @@ calculate_total_size() ->
 	case sqlite3:sql_exec(?DBNAME, "SELECT sum(bytes) FROM files;") of
 		[{columns, _}, {rows, [{TotalSize}]}] -> TotalSize;
 		_ -> 0
-	end
+	end.
 
 %% ====================================================================
 %% Internal functions
 %% ====================================================================
 
-instantiate_file({Id, VPath, Owner, Bytes, Locat, AccMode, CreatTime}) ->
+instantiate_file({Id, Owner, VPath, Bytes, Locat, AccMode, CreatTime}) ->
 	#file{	id 			= Id,
-			vpath 		= VPath,
 			owner 		= Owner,
+			vpath 		= VPath,
 			bytes 		= Bytes,
 			location 	= Locat,
 			access_mode = AccMode,

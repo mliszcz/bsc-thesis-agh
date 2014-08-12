@@ -19,8 +19,8 @@
 
 -record(file, {
 	id, 			% integer()
-	vpath, 			% list()
 	owner, 			% integer()
+	vpath, 			% list()
 	bytes, 			% integer()
 	location, 		% list()
 	access_mode, 	% integer()

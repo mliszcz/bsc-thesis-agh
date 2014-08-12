@@ -6,6 +6,7 @@
 
 -export([ handle_req/1 ]).
 
+
 handle_req(
 	#request{
 		type=create,
@@ -14,27 +15,32 @@ handle_req(
 		data=PData
 	}=_Request) ->
 	log:info("create ~s", [VPath]),
-	case metadata:get(UserId, VPath) of
-		{ok,	_} ->
+
+	case db_files:exists(VPath, UserId) of
+
+		true ->
+
 			log:warn("file exists!"),
 			{error, file_exists};
 
-		{error,	_} ->
-			File = #filedesc {
-				path = VPath,
-				user = UserId,
-				size = byte_size(PData),
-				last_access	= util:timestamp()
-				},
-		
-			{ok, #filedesc{internal_id=NewId, size=Size}} = metadata:create(File),
+		false ->
+
+			File = #file{	vpath 		= VPath,
+							owner 		= UserId,
+							bytes 		= byte_size(PData),
+							access_mode = 0
+						},
+
+			{ok, #file{bytes=Size, location=Location}} = db_files:create(File),
+
 			globals:set(fill, globals:get(fill)+Size),
 			globals:set(reserv, globals:get(reserv)-Size),
 		
-			files:write(NewId, PData),
+			files:write(Location, PData),
 			log:info("file ~s  created!", [VPath]),
 			{ok, created}
 	end;
+
 
 handle_req(
 	#request{
@@ -44,19 +50,25 @@ handle_req(
 	data=Data
 	}=_Request) ->
 	log:info("update ~s", [VPath]),
-	case metadata:get(UserId, VPath) of
+
+	case db_files:select(VPath, UserId) of
+
 		{error,	_} ->
+
 			log:warn("file not exists"),
 			{error, not_found};
 
 		{ok,	File} ->
-			metadata:modify(File#filedesc{last_access=util:timestamp()}),
-			globals:set(fill, globals:get(fill)+byte_size(Data)),
-			globals:set(fill, globals:get(fill)-File#filedesc.size),
-			metadata:modify(File#filedesc{size=byte_size(Data)}),
-			files:write(File#filedesc.internal_id, Data),
+
+			NewSize = byte_size(Data),
+			globals:set(fill, globals:get(fill)+NewSize),
+			globals:set(fill, globals:get(fill)-File#file.bytes),
+			db_files:update(File#file{bytes=NewSize}),
+
+			files:write(File#file.location, Data),
 			{ok, updated}
 	end;
+
 
 handle_req(
 	#request{
@@ -65,11 +77,10 @@ handle_req(
 		path=VPath
 	}) ->
 	log:info("read ~s", [VPath]),
-	case metadata:get(UserId, VPath) of
+	case db_files:select(VPath, UserId) of
 		{error, _} -> log:warn("file not exists"), {error, not_found};	
 		{ok, File} ->
-			metadata:modify(File#filedesc{last_access=util:timestamp()}),
-			{ok, Data} = files:read(File#filedesc.internal_id),
+			{ok, Data} = files:read(File#file.location),
 			log:info("serving ~s, (~w bytes)", [VPath, byte_size(Data)]),
 			{ok, Data}
 	end;
@@ -81,12 +92,12 @@ handle_req(
 		path=VPath
 	}) ->
 	log:info("delete ~s", [VPath]),
-	case metadata:get(UserId, VPath) of
+	case db_files:select(VPath, UserId) of
 		{error, _} -> log:warn("file not exists"), {error, not_found};	
 		{ok, File} ->
-			globals:set(fill, globals:get(fill)-File#filedesc.size),
-			metadata:delete(File),
-			files:delete(File#filedesc.internal_id),
+			globals:set(fill, globals:get(fill)-File#file.bytes),
+			db_files:delete(File),
+			files:delete(File#file.location),
 			{ok, deleted}
 	end;
 
@@ -96,7 +107,7 @@ handle_req(
 		user=UserId
 	}) ->
 	log:info("list"),
-	metadata:get(UserId);
+	db_files:select_by_owner(UserId);
 
 handle_req(
 	#request{
@@ -105,9 +116,9 @@ handle_req(
 		path=Path
 	}) ->
 	log:info("find ~s", [Path]),
-	case metadata:get(User, Path) of
-		{ok, _} -> {ok, node()};
-		_ -> {error, not_found}
+	case db_files:exists(Path, User) of
+		true -> {ok, node()};
+		false -> {error, not_found}
 	end.
 
 

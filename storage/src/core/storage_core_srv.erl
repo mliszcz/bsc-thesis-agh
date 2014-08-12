@@ -43,12 +43,10 @@ init(_Args) ->
 
 	ets:new(?EXECUTORS, [named_table, public, {heir, whereis(init), nothing} ]),
 
-	filelib:ensure_dir(files:resolve_name(".metadata")),
-	metadata:init(files:resolve_name(".metadata")),
+	filelib:ensure_dir(files:resolve_name("files.db")),
+	db_files:init(files:resolve_name("files.db")),
 
-	Files = metadata:to_list(),
-	Fill = lists:foldl(
-		fun(File, Acc) -> Acc+File#filedesc.size end, 0, Files),
+	Fill = db_files:calculate_total_size(),
 
 	Quota = util:get_env(core_storage_quota),
 
@@ -56,7 +54,7 @@ init(_Args) ->
 	globals:set(reserv, 0),
 
 	log:info("node ~s, fill ~w/~w with ~w files",
-		[node(), Fill, Quota, length(Files)]),
+		[node(), Fill, Quota, 0]),
 
 	{ok, {Fill, Quota}}.
 
@@ -130,7 +128,7 @@ handle_cast({request,
 handle_cast(stop, State) ->
 	log:info("shutdown"),
 	ets:delete(?EXECUTORS),
-	metadata:deinit(),
+	db_files:deinit(),
 	{stop, normal, State}.
 
 handle_info(_Info, State) ->
@@ -139,7 +137,7 @@ handle_info(_Info, State) ->
 terminate(_Reason, _State) ->
 	log:info("closing"),
 	ets:delete(?EXECUTORS),
-	metadata:deinit(),
+	db_files:deinit(),
 	ok.
 
 code_change(_OldVsn, State, _Extra) ->
