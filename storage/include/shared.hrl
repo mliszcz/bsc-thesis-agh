@@ -22,10 +22,29 @@
 	}).
 
 
+-record(user, {
+	id, 			% integer()
+	name,			% list()
+	secret, 		% list()
+	create_time, 	% integer()
+	storage_grant 	% integer()
+	}).
+
+
+-record(action, {
+	id, 			% integer()
+	user_id, 		% integer()
+	file_id, 		% integer()
+	time, 			% integer()
+	type 			% integer() = C|R|U|D|L|F
+	}).
+
+
 -record(request, {
-	type,	% action = create | read | update | delete | list | find
-	user,	% user = string()
-	path = none,
-	data = none,
-	opts = none
+	type, 			% create | read | update | delete | list | find
+	user, 			% integer()
+	hmac = none, 	% binary()
+	path = none, 	% list()
+	data = none, 	% binary()
+	opts = none 	% -unused-
 	}).

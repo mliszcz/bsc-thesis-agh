@@ -1,10 +1,10 @@
 %% @author Michal Liszcz
-%% @doc DAO for file entities (SQL database)
+%% @doc DAO for user entities (SQL database)
 
--module(db_files).
+-module(db_users).
 -include("shared.hrl").
 
--define(DBNAME, db_files_srv).
+-define(DBNAME, db_users_srv).
 
 %% ====================================================================
 %% API functions
@@ -14,11 +14,11 @@
 		 create/1,
 		 update/1,
 		 delete/1,
-		 select/2,
-		 select_by_owner/1,
+		 select/1,
+		 select_by_name/1,
 		 select_all/0,
-		 exists/2,
-		 calculate_total_size/0
+		 exists/1,
+		 exists_by_name/1
 		]).
 
 init(DatabaseLocation) ->
@@ -26,16 +26,12 @@ init(DatabaseLocation) ->
 	{ok, _Pid} = sqlite3:open(?DBNAME, [{file, DatabaseLocation}]),
 
 	sqlite3:sql_exec_script(?DBNAME,
-		"CREATE TABLE IF NOT EXISTS files (
+		"CREATE TABLE IF NOT EXISTS users (
 			id 				INTEGER 	NOT NULL PRIMARY KEY AUTOINCREMENT,
-			owner 			INTEGER 	NOT NULL,
-			vpath 			TEXT 		NOT NULL,
-			bytes 			INTEGER 	NOT NULL,
-			location 		TEXT 		NOT NULL,
-			access_mode 	INTEGER 	NOT NULL,
+			name 			TEXT 		NOT NULL UNIQUE,
+			secret 			TEXT 		NOT NULL,
 			create_time 	INTEGER 	NOT NULL,
-
-			UNIQUE (vpath, owner)
+			storage_grant	INTEGER 	NOT NULL DEFAULT 0
 		);").
 
 
@@ -43,125 +39,102 @@ deinit() ->
 	sqlite3:close(?DBNAME).
 
 
-create(#file{} = Entity) ->
-
-	NewEntity = Entity#file {
-		location = uuid:generate(),
-		create_time = util:timestamp()
-		},
+create(#user{} = Entity) ->
 
 	{rowid, NewId} = sqlite3:sql_exec(?DBNAME,
-		"INSERT INTO files (owner, vpath, bytes, location, access_mode, create_time)
-					VALUES (:owner, :vpath, :bytes, :locat, :acces, :ctime);", [
-						{':owner', NewEntity#file.owner},
-						{':vpath', NewEntity#file.vpath},
-						{':bytes', NewEntity#file.bytes},
-						{':locat', NewEntity#file.location},
-						{':acces', NewEntity#file.access_mode},
-						{':ctime', NewEntity#file.create_time}
+		"INSERT INTO files (name, secret, create_time, storage_grant)
+					VALUES (:name, :secrt, :ctime, :grant);", [
+						{':name',  Entity#user.name},
+						{':secrt', Entity#user.secret},
+						{':ctime', Entity#user.create_time},
+						{':vpath', Entity#user.storage_grant}
 		]),
 
-	[{columns, ["id"]}, {rows, [{NewId}]}] = sqlite3:sql_exec(?DBNAME,
-		"SELECT id FROM files WHERE owner = :owner AND vpath = :vpath;", [
-			{':owner', Entity#file.owner},
-			{':vpath', Entity#file.vpath}
-		]),
-
-	{ok, NewEntity#file {id=NewId}}.
+	{ok, Entity#user {id=NewId}}.
 
 
-update(#file{} = Entity) ->
+update(#user{} = Entity) ->
 
 	sqlite3:sql_exec(?DBNAME,
-		"UPDATE files SET
-						owner 		= :owner,
-						vpath 		= :vpath,
-						bytes 		= :bytes,
-						location 	= :locat,
-						access_mode = :acces,
-						create_time = :ctime
+		"UPDATE users SET
+						name 			= :name,
+						secret 			= :secrt,
+						create_time 	= :ctime,
+						storage_grant 	= :grant
 					WHERE id = :ident;", [
-						{':owner', Entity#file.owner},
-						{':vpath', Entity#file.vpath},
-						{':bytes', Entity#file.bytes},
-						{':locat', Entity#file.location},
-						{':acces', Entity#file.access_mode},
-						{':ctime', Entity#file.create_time},
-						{':ident', Entity#file.id}
+						{':name',  Entity#user.name},
+						{':secrt', Entity#user.secret},
+						{':ctime', Entity#user.create_time},
+						{':vpath', Entity#user.storage_grant}
 		]),
 
 	{ok, Entity}.
 
 
-delete(#file{} = Entity) ->
-	sqlite3:sql_exec(?DBNAME, "DELETE FROM files WHERE id = :id;", [{':id', Entity#file.id}]).
+delete(#user{} = Entity) ->
+	sqlite3:sql_exec(?DBNAME, "DELETE FROM users WHERE id = :id;", [{':id', Entity#user.id}]).
 
 
-select(Owner, VPath) ->
+select(Id) ->
 
 	case sqlite3:sql_exec(?DBNAME, 
-		"SELECT id, owner, vpath, bytes, location, access_mode, create_time
-				FROM files WHERE owner = :owner AND vpath = :vpath;", [
-				{':owner', Owner},
-				{':vpath', VPath}
-				]) of
+		"SELECT id, name, secret, create_time, storage_grant
+				FROM users WHERE id = :id;", [{':id', Id}]) of
 
-		[{columns, _}, {rows, [RowTuple]}] -> {ok, instantiate_file(RowTuple)};
+		[{columns, _}, {rows, [RowTuple]}] -> {ok, instantiate_entity(RowTuple)};
 		_ -> {error, not_found}
 	end.
 
 
-select_by_owner(Owner) ->
-	
-	case sqlite3:sql_exec(?DBNAME, 
-		"SELECT id, owner, vpath, bytes, location, access_mode, create_time
-				FROM files WHERE owner = :owner;", [{':owner', Owner}]) of
+select_by_name(Name) ->
 
-		[{columns, _}, {rows, ListOfRows}] -> {ok, [instantiate_file(Row) || Row <- ListOfRows]};
-		_ -> {ok, []}
+	case sqlite3:sql_exec(?DBNAME, 
+		"SELECT id, name, secret, create_time, storage_grant
+				FROM users WHERE name = :name;", [{':name', Name}]) of
+
+		[{columns, _}, {rows, [RowTuple]}] -> {ok, instantiate_entity(RowTuple)};
+		_ -> {error, not_found}
 	end.
 
 
 select_all() ->
 	
 	case sqlite3:sql_exec(?DBNAME, 
-		"SELECT id, owner, vpath, bytes, location, access_mode, create_time FROM files;") of
+		"SELECT id, secret, create_time, storage_grant FROM users;") of
 
-		[{columns, _}, {rows, ListOfRows}] -> {ok, [instantiate_file(Row) || Row <- ListOfRows]};
+		[{columns, _}, {rows, ListOfRows}] -> {ok, [instantiate_entity(Row) || Row <- ListOfRows]};
 		_ -> {ok, []}
 	end.
 
 
-exists(Owner, VPath) ->
+exists(Id) ->
 
 	case sqlite3:sql_exec(?DBNAME, 
-		"SELECT EXISTS (SELECT 1 FROM files WHERE owner = :owner AND vpath = :vpath LIMIT 1);", [
-		{':owner', Owner},
-		{':vpath', VPath}
-		]) of
+		"SELECT EXISTS (SELECT 1 FROM users WHERE id = :id LIMIT 1);", [{':id', Id}]) of
 
 		[{columns, _}, {rows, [{1}]}] -> true;
 		_ -> false
 	end.
 
 
-calculate_total_size() ->
+exists_by_name(Name) ->
 
-	case sqlite3:sql_exec(?DBNAME, "SELECT sum(bytes) FROM files;") of
-		[{columns, _}, {rows, [{TotalSize}]}] -> TotalSize;
-		_ -> 0
+	case sqlite3:sql_exec(?DBNAME, 
+		"SELECT EXISTS (SELECT 1 FROM users WHERE name = :name LIMIT 1);", [{':name', Name}]) of
+
+		[{columns, _}, {rows, [{1}]}] -> true;
+		_ -> false
 	end.
+
 
 %% ====================================================================
 %% Internal functions
 %% ====================================================================
 
-instantiate_file({Id, Owner, VPath, Bytes, Locat, AccMode, CreatTime}) ->
-	#file{	id 			= Id,
-			owner 		= Owner,
-			vpath 		= VPath,
-			bytes 		= Bytes,
-			location 	= Locat,
-			access_mode = AccMode,
-			create_time = CreatTime
+instantiate_entity({Id, Name, Secret, CreatTime, StorGrant}) ->
+	#user{	id 				= Id,
+			name 			= Name,
+			secret 			= Secret,
+			create_time 	= CreatTime,
+			storage_grant 	= StorGrant
 			}.

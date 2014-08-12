@@ -61,11 +61,11 @@ create(#file{} = Entity) ->
 						{':ctime', NewEntity#file.create_time}
 		]),
 
-	[{columns, ["id"]}, {rows, [{NewId}]}] = sqlite3:sql_exec(?DBNAME,
-		"SELECT id FROM files WHERE owner = :owner AND vpath = :vpath;", [
-			{':owner', Entity#file.owner},
-			{':vpath', Entity#file.vpath}
-		]),
+	% [{columns, ["id"]}, {rows, [{NewId}]}] = sqlite3:sql_exec(?DBNAME,
+	% 	"SELECT id FROM files WHERE owner = :owner AND vpath = :vpath;", [
+	% 		{':owner', Entity#file.owner},
+	% 		{':vpath', Entity#file.vpath}
+	% 	]),
 
 	{ok, NewEntity#file {id=NewId}}.
 

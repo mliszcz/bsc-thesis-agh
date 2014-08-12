@@ -1,23 +1,18 @@
 inz
 ===
 
-Praca Inżynierska
+Praca Inzynierska
 
 ### URGENT TODOS
+* make use of core gen_server state (stop using global vars)
+* handle constraint violations and other db errors
 
-* reserve cap for *update* requests
-* make core server stateful (stop using global vars)
+### cluster deployment
+* change clustertool generator options in *clustertool/make_cluster.properties*
+* generate cluster using *clustertool/make_cluster.sh*
+* *node.config* and *releases/0.1.0/vm.args* in each node dir may require some changes
 
-### NOTE
-Project is **UNDER DEVELOPEMENT** and should not be used in prod env.
-This is not final way to start the server and will change many times.
-
-### How to run it
-
-```
-git clone git@github.com:mliszcz/inz.git
-./rebar compile
-./run_env.sh
->application:start(storage).
-```
-
+### third-party code
+* erlang-sqlite  
+  https://github.com/alexeyr/erlang-sqlite3
+*
