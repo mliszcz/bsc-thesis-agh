@@ -46,7 +46,8 @@ init(_Args) ->
 	filelib:ensure_dir(files:resolve_name("files.db")),
 	db_files:init(files:resolve_name("files.db")),
 
-	Fill = db_files:calculate_total_size(),
+	% Fill = db_files:calculate_total_size(),
+	Fill = 0,
 
 	Quota = util:get_env(core_storage_quota),
 

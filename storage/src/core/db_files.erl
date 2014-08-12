@@ -50,15 +50,15 @@ create(#file{} = Entity) ->
 		create_time = util:timestamp()
 		},
 
-	sqlite3:sql_exec(?DBNAME,
+	{rowid, NewId} = sqlite3:sql_exec(?DBNAME,
 		"INSERT INTO files (owner, vpath, bytes, location, access_mode, create_time)
 					VALUES (:owner, :vpath, :bytes, :locat, :acces, :ctime);", [
-						{':owner', Entity#file.owner},
-						{':vpath', Entity#file.vpath},
-						{':bytes', Entity#file.bytes},
-						{':locat', Entity#file.location},
-						{':acces', Entity#file.access_mode},
-						{':ctime', Entity#file.create_time}
+						{':owner', NewEntity#file.owner},
+						{':vpath', NewEntity#file.vpath},
+						{':bytes', NewEntity#file.bytes},
+						{':locat', NewEntity#file.location},
+						{':acces', NewEntity#file.access_mode},
+						{':ctime', NewEntity#file.create_time}
 		]),
 
 	[{columns, ["id"]}, {rows, [{NewId}]}] = sqlite3:sql_exec(?DBNAME,
@@ -67,7 +67,7 @@ create(#file{} = Entity) ->
 			{':vpath', Entity#file.vpath}
 		]),
 
-	NewEntity#file {id=NewId}.
+	{ok, NewEntity#file {id=NewId}}.
 
 
 update(#file{} = Entity) ->
@@ -90,18 +90,18 @@ update(#file{} = Entity) ->
 						{':ident', Entity#file.id}
 		]),
 
-	Entity.
+	{ok, Entity}.
 
 
 delete(#file{} = Entity) ->
 	sqlite3:sql_exec(?DBNAME, "DELETE FROM files WHERE id = :id;", [{':id', Entity#file.id}]).
 
 
-select(VPath, Owner) ->
+select(Owner, VPath) ->
 
 	case sqlite3:sql_exec(?DBNAME, 
 		"SELECT id, owner, vpath, bytes, location, access_mode, create_time
-				FROM files WHERE owner = :owner vpath = :vpath;", [
+				FROM files WHERE owner = :owner AND vpath = :vpath;", [
 				{':owner', Owner},
 				{':vpath', VPath}
 				]) of
@@ -132,10 +132,10 @@ select_all() ->
 	end.
 
 
-exists(VPath, Owner) ->
+exists(Owner, VPath) ->
 
 	case sqlite3:sql_exec(?DBNAME, 
-		"SELECT EXISTS (SELECT 1 FROM filesWHERE owner = :owner AND vpath = :vpath LIMIT 1);", [
+		"SELECT EXISTS (SELECT 1 FROM files WHERE owner = :owner AND vpath = :vpath LIMIT 1);", [
 		{':owner', Owner},
 		{':vpath', VPath}
 		]) of
@@ -146,6 +146,9 @@ exists(VPath, Owner) ->
 
 
 calculate_total_size() ->
+
+	log:info("QUERYING SIZE"),
+	log:info("RESULT ~p", [sqlite3:sql_exec(?DBNAME, "SELECT sum(bytes) FROM files;")]),
 
 	case sqlite3:sql_exec(?DBNAME, "SELECT sum(bytes) FROM files;") of
 		[{columns, _}, {rows, [{TotalSize}]}] -> TotalSize;
