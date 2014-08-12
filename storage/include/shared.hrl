@@ -17,6 +17,16 @@
 	internal_id
 	}).
 
+-record(file, {
+	id, 			% integer()
+	vpath, 			% list()
+	owner, 			% integer()
+	bytes, 			% integer()
+	location, 		% list()
+	access_mode, 	% integer()
+	create_time 	% integer()
+	}).
+
 %% improved request
 
 -record(request, {
