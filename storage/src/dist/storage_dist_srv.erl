@@ -109,6 +109,15 @@ handle_call({request, #request{type=list}=Request}, From, State) ->
 		end),
 	{noreply, State};
 
+handle_call({broadcast, Process, Message},
+	From, State) ->
+	log:info("generic broadcast"),
+	spawn_link(
+		fun() ->
+			broadcast(State, Process, {Message, From})
+		end),
+	{noreply, State};
+
 handle_call({state_info}, _From, State) ->
 	{reply, {ok, State}, State}.
 

@@ -5,6 +5,8 @@
 -include("shared.hrl").
 -behaviour(gen_server).
 -define(SERVER, ?MODULE).
+% -define(CACHE, users_cache).
+-define(EXPIRATION_TIME, 10*60*1000).	% 10-minute cache validity
 
 %% ------------------------------------------------------------------
 %% API Function Exports
@@ -36,95 +38,96 @@ stop() ->
 
 init(_Args) ->
 
-	% globals:set(capacity, util:get_env(dist_storage_cap)),
+	filelib:ensure_dir(files:resolve_name("users.db")),
+	db_users:init(files:resolve_name("users.db")),
 
-	InitialNode = list_to_atom(util:get_env(dist_initial_node)),
-	log:info("performing remote scan"),
-	RemoteNodes = remote_scan(sets:add_element(InitialNode, sets:new())),
-	log:info("remote scan done!"),
-	broadcast(RemoteNodes, ?DIST_SERVER, {hello, node()}),	% broadcast own name
+	Cache = ets:new(users_cache, [public]),
 
-	{ok, RemoteNodes}.
+	log:info("authenticator initialized"),
+	{ok, Cache}.
 
-handle_call({request, #request{type=create, path=Path}=Request},
+
+handle_call({authenticate, #request{user=UserId, hmac=Hmac}=Request},
 	From, State) ->
-	log:info("creating ~s", [Path]),
+	log:info("authentication call for user ~p (id)", []),
+
 	spawn_link(
 		fun() ->
-			Size = byte_size(Request#request.data),
-			Fills = broadcall(State, ?CORE_SERVER, {reserve, Size}),
-			{_, Best} = lists:min(lists:map(fun({Node, Fill}) -> {Fill,Node} end, Fills)),
-			% TODO - handle case when system is full (Fills may be empty)!
-			gen_server:cast({?CORE_SERVER, Best}, {request, Request, From}),
-			broadcast(sets:del_element(Best, State), ?CORE_SERVER, {release, Size})
-		end),
-	{noreply, State};
 
-handle_call({request, #request{type=read, path=Path}=Request},
-	From, State) ->
-	log:info("reading ~s", [Path]),
-	spawn_link(
-		fun() ->
-			broadcast(State, ?CORE_SERVER, {request, Request, From})
-		end),
-	{noreply, State};
+			% look in cache
+			Now = util:timestamp(),
 
-handle_call({request, #request{type=update, path=Path}=Request},
-	From, State) ->
-	log:info("updating ~s", [Path]),
-	spawn_link(
-		fun() ->
-			try gen_server:call({?DIST_SERVER, node()}, {request, Request#request{type=find, data=none}}) of
-				{ok, Node} -> gen_server:cast({?CORE_SERVER, Node}, {request, Request, From})
-			catch
-				_:{timeout, _} -> pass
+			AcceptedL1 = case ets:lookup(State, UserId) of
+
+				% entry exists in cache and is valid
+				[{UserId, Secret, Expires}] when Expires < Now ->
+
+					% try to validate request with cached secret
+					case Hmac == calculate_hmac(Request, Secret) of
+
+						% everything ok, renew entry
+						true ->
+							ets:insert(State, {UserId, Secret, Now+?EXPIRATION_TIME}),
+							true;
+
+						% invalid secret or changed from last caching
+						_ ->
+							false
+					end;
+
+				% no entry or is expired
+				_ ->
+					false
+			end,
+
+			AcceptedL2 = case AcceptedL1 of
+				true -> true;
+				false ->
+
+					% ask other nodes for user identity
+					case fetch_user(UserId) of
+
+						% obtained secret is valid, update cache and test hmac
+						{ok, UserEntity} ->
+							ets:insert(State, {UserEntity#user.id, UserEntity#user.secret,
+								Now+?EXPIRATION_TIME}),
+							Hmac == calculate_hmac(Request, UserEntity#user.secret);
+
+						% dafuq are u?
+						{error, _} -> false
+					end
+			end,
+
+			case AcceptedL2 of
+				true -> gen_server:reply(From, {ok, hmac_valid});
+				false -> gen_server:reply(From, {error, hmac_invalid})
 			end
+
 		end),
+	{noreply, State}.
+
+
+handle_cast({{identity, UserId}, ReplyTo}, State) ->
+	case db_users:select(UserId) of
+		{ok, UserEntity} -> gen_server:reply(ReplyTo, {ok, UserEntity});
+		{error, _} -> pass
+	end,
 	{noreply, State};
 
-handle_call({request, #request{type=delete, path=Path}=Request},
-	From, State) ->
-	log:info("deleting ~s", [Path]),
-	spawn_link(
-		fun() ->
-			broadcast(State, ?CORE_SERVER, {request, Request, From})
-		end),
-	{noreply, State};
 
-handle_call({request, #request{type=find, path=Path}=Request},
-	From, State) ->
-	log:info("broadcasting find ~s", [Path]),
-	spawn_link(
-		fun() ->
-			broadcast(State, ?CORE_SERVER, {request, Request, From})
-		end),
-	{noreply, State};
+handle_cast(_Message, State) ->
+	log:warn("unsupported cast"),
+	{noreply, State}.
 
-handle_call({request, #request{type=list}=Request}, From, State) ->
-	log:info("listing"),
-	spawn_link(
-		fun() ->
-			List = broadcall(State, ?CORE_SERVER, {request, Request, From}),
-			gen_server:reply(From, {ok, List})
-		end),
-	{noreply, State};
-
-handle_call({state_info}, _From, State) ->
-	{reply, {ok, State}, State}.
-
-handle_cast({hello, Node}, State) ->
-	log:info("~p has joined the cluster!", [Node]),
-	{noreply, sets:add_element(Node, State)};
-
-handle_cast(stop, State) ->
-	{stop, normal, State}.
 
 handle_info(_Info, State) ->
 	{noreply, State}.
 
+
 terminate(_Reason, _State) ->
 	log:info("closing"),
 	ok.
+
 
 code_change(_OldVsn, State, _Extra) ->
 	{ok, State}.
@@ -133,34 +136,22 @@ code_change(_OldVsn, State, _Extra) ->
 %% Internal Function Definitions
 %% ------------------------------------------------------------------
 
-%% @doc Scans all known remote nodes to find new ones
-remote_scan(RemoteNodes) ->
-	State = broadcall(sets:del_element(node(), RemoteNodes), ?DIST_SERVER, {state_info}),
-	Online = sets:from_list(lists:map(fun({Node, _Res}) -> Node end, State)),
-	Offline = sets:subtract(RemoteNodes, Online),
-	AllNodes = sets:union(lists:map(fun({_Node, Res}) -> Res end, State)),
-	sets:add_element(node(), sets:subtract(AllNodes, Offline)).
+calculate_hmac(
+	#request{
+		type=Type,
+		user=UserId,
+		path=Path
+	}, Secret) ->
+	crypto:hmac(sha, Secret, list_to_binary([
+		atom_to_list(Type),
+		integer_to_list(UserId),
+		Path
+		])).
 
+fetch_user(UserId) ->
 
-broadcast(RemoteNodes, Process, Message) ->
-	sets:fold(
-		fun(Node, _Acc) ->
-			gen_server:cast({Process, Node}, Message)
-		end,
-		[], RemoteNodes).
-
-broadcall(RemoteNodes, Process, Message) ->
-	sets:fold(
-		fun(Node, Acc) ->
-			try gen_server:call({Process, Node}, Message) of
-				{ok,	Res}	-> Acc++[{Node, Res}];
-				{error,	_}		-> Acc
-			catch
-				_:{timeout, _} -> Acc;
-				_:{{nodedown, _}, _} -> Acc;
-				Type:Error ->
-					log:error("broadcall failed on node ~p, reason: ~w:~w", [Node, Type, Error]),
-					Acc
-			end
-		end,
-		[], RemoteNodes).
+	try gen_server:call({?DIST_SERVER, node()}, {broadcast, ?AUTH_SERVER, {identity, UserId}}) of
+		{ok, UserEntity} -> {ok, UserEntity}
+	catch
+		_:{timeout, _} -> {error, not_found}
+	end.

@@ -43,8 +43,8 @@
 -record(request, {
 	type, 			% create | read | update | delete | list | find
 	user, 			% integer()
-	hmac = none, 	% binary()
 	path = none, 	% list()
+	hmac = none, 	% binary()
 	data = none, 	% binary()
 	opts = none 	% -unused-
 	}).
