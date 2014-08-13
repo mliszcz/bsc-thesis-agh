@@ -46,6 +46,7 @@ init(_Args) ->
 
 	{ok, RemoteNodes}.
 
+
 handle_call({request, #request{type=create, path=Path}=Request},
 	From, State) ->
 	log:info("creating ~s", [Path]),
@@ -55,19 +56,11 @@ handle_call({request, #request{type=create, path=Path}=Request},
 			Fills = broadcall(State, ?CORE_SERVER, {reserve, Size}),
 			{_, Best} = lists:min(lists:map(fun({Node, Fill}) -> {Fill,Node} end, Fills)),
 			% TODO - handle case when system is full (Fills may be empty)!
-			gen_server:cast({?CORE_SERVER, Best}, {request, Request, From}),
+			gen_server:cast({?CORE_SERVER, Best}, {{request, Request}, From}),
 			broadcast(sets:del_element(Best, State), ?CORE_SERVER, {release, Size})
 		end),
 	{noreply, State};
 
-handle_call({request, #request{type=read, path=Path}=Request},
-	From, State) ->
-	log:info("reading ~s", [Path]),
-	spawn_link(
-		fun() ->
-			broadcast(State, ?CORE_SERVER, {request, Request, From})
-		end),
-	{noreply, State};
 
 handle_call({request, #request{type=update, path=Path}=Request},
 	From, State) ->
@@ -75,30 +68,20 @@ handle_call({request, #request{type=update, path=Path}=Request},
 	spawn_link(
 		fun() ->
 			try gen_server:call({?DIST_SERVER, node()}, {request, Request#request{type=find, data=none}}) of
-				{ok, Node} -> gen_server:cast({?CORE_SERVER, Node}, {request, Request, From})
+				{ok, Node} -> gen_server:cast({?CORE_SERVER, Node}, {{request, Request}, From})
 			catch
 				_:{timeout, _} -> pass
 			end
 		end),
 	{noreply, State};
 
-handle_call({request, #request{type=delete, path=Path}=Request},
-	From, State) ->
-	log:info("deleting ~s", [Path]),
-	spawn_link(
-		fun() ->
-			broadcast(State, ?CORE_SERVER, {request, Request, From})
-		end),
+
+handle_call({request, #request{type=Type}=Request}, From, State)
+	when Type == read ; Type == delete ; Type == find ->
+
+	async_broadcast(State, ?CORE_SERVER, {{request, Request}, From}),
 	{noreply, State};
 
-handle_call({request, #request{type=find, path=Path}=Request},
-	From, State) ->
-	log:info("broadcasting find ~s", [Path]),
-	spawn_link(
-		fun() ->
-			broadcast(State, ?CORE_SERVER, {request, Request, From})
-		end),
-	{noreply, State};
 
 handle_call({request, #request{type=list}=Request}, From, State) ->
 	log:info("listing"),
@@ -109,31 +92,33 @@ handle_call({request, #request{type=list}=Request}, From, State) ->
 		end),
 	{noreply, State};
 
-handle_call({broadcast, Process, Message},
-	From, State) ->
-	log:info("generic broadcast"),
-	spawn_link(
-		fun() ->
-			broadcast(State, Process, {Message, From})
-		end),
+
+handle_call({broadcast, Process, Message}, From, State) ->
+	async_broadcast(State, Process, {Message, From}),
 	{noreply, State};
+
 
 handle_call({state_info}, _From, State) ->
 	{reply, {ok, State}, State}.
+
 
 handle_cast({hello, Node}, State) ->
 	log:info("~p has joined the cluster!", [Node]),
 	{noreply, sets:add_element(Node, State)};
 
+
 handle_cast(stop, State) ->
 	{stop, normal, State}.
+
 
 handle_info(_Info, State) ->
 	{noreply, State}.
 
+
 terminate(_Reason, _State) ->
 	log:info("closing"),
 	ok.
+
 
 code_change(_OldVsn, State, _Extra) ->
 	{ok, State}.
@@ -173,3 +158,10 @@ broadcall(RemoteNodes, Process, Message) ->
 			end
 		end,
 		[], RemoteNodes).
+
+async_broadcast(RemoteNodes, Process, Message) ->
+	log:info("spawning broadcast"),
+	spawn_link(
+		fun() ->
+			broadcast(RemoteNodes, Process, Message)
+		end).

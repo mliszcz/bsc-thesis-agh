@@ -99,12 +99,17 @@ handle_call({authenticate, #request{user=UserId, hmac=Hmac}=Request},
 			end,
 
 			case AcceptedL2 of
-				true -> gen_server:reply(From, {ok, hmac_valid});
-				false -> gen_server:reply(From, {error, hmac_invalid})
+				true -> gen_server:reply(From, {ok, authenticated});
+				false -> gen_server:reply(From, {error, authentication_failed})
 			end
 
 		end),
-	{noreply, State}.
+	{noreply, State};
+
+
+handle_call({sign_request, #request{}=Request, Secret}, _From, State) ->
+	SignedRequest = Request#request{hmac = calculate_hmac(Request, Secret)},
+	{reply, {ok, SignedRequest}, State}.
 
 
 handle_cast({{identity, UserId}, ReplyTo}, State) ->

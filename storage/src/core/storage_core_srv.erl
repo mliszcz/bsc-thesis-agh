@@ -61,10 +61,10 @@ init(_Args) ->
 
 	{ok, {Fill, Quota}}.
 
-handle_call({request,
+handle_call({{request,
 	#request{
 		type=list
-		}=Request, _ReplyTo}, From, {_Fill, _Quota}=State) ->
+		}=Request}, _ReplyTo}, From, {_Fill, _Quota}=State) ->
 
 	log:info("core list"),
 	executor:push(From, Request),
@@ -82,6 +82,7 @@ handle_call({reserve, HowMuch}, _From, State) ->
 		_	->
 			{error, storage_full}
 	end,
+	log:info("reserved"),
 	{reply, Result, State}.
 
 handle_cast({release, HowMuch}, State) ->
@@ -102,12 +103,12 @@ handle_cast({release, HowMuch}, State) ->
 % 	end,
 % 	{noreply, State};
 
-handle_cast({request,
+handle_cast({{request,
 	#request{
 		type=_Type,
 		path=Path,
 		user=_User
-		}=Request, ReplyTo}, {_Fill, _Quota}=State) ->
+		}=Request}, ReplyTo}, {_Fill, _Quota}=State) ->
 
 	log:info("requested ~s", [Path]),
 
