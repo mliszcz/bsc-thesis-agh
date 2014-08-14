@@ -31,7 +31,7 @@ handle_req(
 							access_mode = 0
 						},
 
-			{ok, #file{bytes=Size, location=Location}} = db_files:create(File),
+			{ok, #file{bytes=Size, id=Location}} = db_files:create(File),
 
 			globals:set(fill, globals:get(fill)+Size),
 			globals:set(reserv, globals:get(reserv)-Size),
@@ -65,7 +65,7 @@ handle_req(
 			globals:set(fill, globals:get(fill)-File#file.bytes),
 			db_files:update(File#file{bytes=NewSize}),
 
-			files:write(File#file.location, Data),
+			files:write(File#file.id, Data),
 			{ok, updated}
 	end;
 
@@ -80,7 +80,7 @@ handle_req(
 	case db_files:select(UserId, VPath) of
 		{error, _} -> log:warn("file not exists"), {error, not_found};	
 		{ok, File} ->
-			{ok, Data} = files:read(File#file.location),
+			{ok, Data} = files:read(File#file.id),
 			log:info("serving ~s, (~w bytes)", [VPath, byte_size(Data)]),
 			{ok, Data}
 	end;
@@ -97,7 +97,7 @@ handle_req(
 		{ok, File} ->
 			globals:set(fill, globals:get(fill)-File#file.bytes),
 			db_files:delete(File),
-			files:delete(File#file.location),
+			files:delete(File#file.id),
 			{ok, deleted}
 	end;
 

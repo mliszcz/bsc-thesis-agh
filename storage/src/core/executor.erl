@@ -24,7 +24,7 @@ run(MemoryLimit) ->
 
 %% @def pushes request to associated executor and returns immediately
 push(ReplyTo, #request{user = UserId, path = VPath}=Request) ->
-	get_executor(integer_to_list(UserId)++VPath) ! {ReplyTo, Request},
+	get_executor(UserId++VPath) ! {ReplyTo, Request},
 	{ok, request_pushed}.
 
 %% @def retrieves (or creates) handler for given file

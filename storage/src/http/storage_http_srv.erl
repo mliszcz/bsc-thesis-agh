@@ -129,13 +129,13 @@ extract_credentials(Headers) ->
 
 	{match, [[UserIdStr, HmacStr]]} = re:run(
 		dict:fetch('Authorization', Headers),
-		"^HMAC\\s+(\\d+):([a-f0-9]+)$",
+		"^HMAC\\s+([a-f0-9]+):([a-f0-9]+)$",
 		[global, {capture, all_but_first, list}]
 	),
 
 	log:info("extracted ~p : ~p", [UserIdStr, HmacStr]),
 
-	{list_to_integer(UserIdStr), HmacStr}.
+	{UserIdStr, HmacStr}.
 
 
 handle_post(User, Path, Hmac, BinData) ->

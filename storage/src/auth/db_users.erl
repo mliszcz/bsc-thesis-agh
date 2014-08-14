@@ -27,7 +27,7 @@ init(DatabaseLocation) ->
 
 	sqlite3:sql_exec_script(?DBNAME,
 		"CREATE TABLE IF NOT EXISTS users (
-			id 				INTEGER 	NOT NULL PRIMARY KEY AUTOINCREMENT,
+			id 				TEXT 		NOT NULL PRIMARY KEY,
 			name 			TEXT 		NOT NULL UNIQUE,
 			secret 			TEXT 		NOT NULL,
 			create_time 	INTEGER 	NOT NULL,
@@ -48,16 +48,22 @@ deinit() ->
 
 create(#user{} = Entity) ->
 
-	{rowid, NewId} = sqlite3:sql_exec(?DBNAME,
-		"INSERT INTO users (name, secret, create_time, storage_grant)
-					VALUES (:name, :secrt, :ctime, :grant);", [
-						{':name',  Entity#user.name},
-						{':secrt', Entity#user.secret},
-						{':ctime', Entity#user.create_time},
-						{':grant', Entity#user.storage_grant}
+	NewEntity = Entity#user {
+		id = ?UUID_SERVER:generate(),
+		create_time = util:timestamp()
+		},
+
+	sqlite3:sql_exec(?DBNAME,
+		"INSERT INTO users (id, name, secret, create_time, storage_grant)
+					VALUES (:uuid, :name, :secrt, :ctime, :grant);", [
+						{':uuid',  NewEntity#user.id},
+						{':name',  NewEntity#user.name},
+						{':secrt', NewEntity#user.secret},
+						{':ctime', NewEntity#user.create_time},
+						{':grant', NewEntity#user.storage_grant}
 		]),
 
-	{ok, Entity#user {id=NewId}}.
+	{ok, NewEntity}.
 
 
 update(#user{} = Entity) ->
@@ -72,7 +78,8 @@ update(#user{} = Entity) ->
 						{':name',  Entity#user.name},
 						{':secrt', Entity#user.secret},
 						{':ctime', Entity#user.create_time},
-						{':grant', Entity#user.storage_grant}
+						{':grant', Entity#user.storage_grant},
+						{':ident', Entity#user.id}
 		]),
 
 	{ok, Entity}.

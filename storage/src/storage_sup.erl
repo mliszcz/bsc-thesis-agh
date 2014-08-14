@@ -40,6 +40,7 @@ start_link() ->
 
 init(_Args) ->
 	Children = [
+		?CHILD(?UUID_SERVER, worker),
 		?CHILD(?CORE_SERVER, worker),
 		?CHILD(?DIST_SERVER, worker),
 		?CHILD(?AUTH_SERVER, worker),

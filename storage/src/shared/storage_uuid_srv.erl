@@ -42,7 +42,7 @@ init(_Args) ->
 handle_call(generate, _From, State) ->
 	Now = util:timestamp(),
 	Rand = crypto:rand_bytes(4),
-	BinId = << Now:48/integer, State/binary, Rand:32/integer >>,
+	BinId = << Now:48/integer, State/binary, Rand/binary >>,
 	{reply, util:binary_to_hex_string(BinId), State}.
 
 handle_cast(stop, State) ->
@@ -51,7 +51,7 @@ handle_cast(stop, State) ->
 handle_info(_Info, State) ->
 	{noreply, State}.
 
-terminate(_Reason, State) ->
+terminate(_Reason, _State) ->
 	ok.
 
 code_change(_OldVsn, State, _Extra) ->
