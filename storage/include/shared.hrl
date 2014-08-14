@@ -44,7 +44,7 @@
 	type, 			% create | read | update | delete | list | find
 	user, 			% integer()
 	path = none, 	% list()
-	hmac = none, 	% binary()
+	hmac = none, 	% list()
 	data = none, 	% binary()
 	opts = none 	% -unused-
 	}).

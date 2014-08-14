@@ -49,7 +49,7 @@ init(_Args) ->
 
 handle_call({authenticate, #request{user=UserId, hmac=Hmac}=Request},
 	From, State) ->
-	log:info("authentication call for user ~p (id)", []),
+	log:info("authentication call for user ~p (id)", [UserId]),
 
 	spawn_link(
 		fun() ->
@@ -84,23 +84,28 @@ handle_call({authenticate, #request{user=UserId, hmac=Hmac}=Request},
 				true -> true;
 				false ->
 
+					log:info("fetching user"),
 					% ask other nodes for user identity
 					case fetch_user(UserId) of
 
 						% obtained secret is valid, update cache and test hmac
 						{ok, UserEntity} ->
+							log:info("fetched"),
 							ets:insert(State, {UserEntity#user.id, UserEntity#user.secret,
 								Now+?EXPIRATION_TIME}),
+							CalcHmac = calculate_hmac(Request, UserEntity#user.secret),
+							log:info("comparing calc hmac ~p with given ~p", [CalcHmac, Hmac]),
+
 							Hmac == calculate_hmac(Request, UserEntity#user.secret);
 
 						% dafuq are u?
-						{error, _} -> false
+						{error, _} -> log:info("fucked"), false
 					end
 			end,
 
 			case AcceptedL2 of
-				true -> gen_server:reply(From, {ok, authenticated});
-				false -> gen_server:reply(From, {error, authentication_failed})
+				true -> log:info("repl ok"), gen_server:reply(From, {ok, authenticated});
+				false -> log:info("repl err"), gen_server:reply(From, {error, authentication_failed})
 			end
 
 		end),
@@ -113,6 +118,7 @@ handle_call({sign_request, #request{}=Request, Secret}, _From, State) ->
 
 
 handle_cast({{identity, UserId}, ReplyTo}, State) ->
+	log:info("serving identity ~p", [UserId]),
 	case db_users:select(UserId) of
 		{ok, UserEntity} -> gen_server:reply(ReplyTo, {ok, UserEntity});
 		{error, _} -> pass
@@ -147,11 +153,9 @@ calculate_hmac(
 		user=UserId,
 		path=Path
 	}, Secret) ->
-	crypto:hmac(sha, Secret, list_to_binary([
-		atom_to_list(Type),
-		integer_to_list(UserId),
-		Path
-		])).
+	util:binary_to_hex_string(
+		crypto:hmac(sha, Secret, atom_to_list(Type)++integer_to_list(UserId)++Path)
+		).
 
 fetch_user(UserId) ->
 

@@ -29,6 +29,19 @@ function fail {
 	exit 1
 }
 
+function curl_exec {
+	# $1 - method
+	# $2 - node
+	# $3 - target
+	# $4 - file
+
+	curl -X $1 \
+		 -H "Authorization: HMAC 1:82f63b78" \
+		 $( [[ -n "$4" ]] && echo "--data-binary @$4" || echo "" ) \
+		 "$2/storage/$3" \
+		 2>/dev/null
+}
+
 
 if [ -n "$1" ]
 then
@@ -48,7 +61,7 @@ rm -f $TEST_INPUT > /dev/null 2>&1
 rm -f $TEST_OUTPUT > /dev/null 2>&1
 
 random_file 128 $TEST_INPUT		# 128 MB
-RESULT=$(curl -XPOST --data-binary @"$TEST_INPUT" "$STORAGE_NODE"/"$TEST_REMOTE" 2>/dev/null)
+RESULT=$(curl_exec POST "$STORAGE_NODE" "$TEST_REMOTE" "$TEST_INPUT")
 [ "$RESULT" == "HTTP/1.0 201 Created" ] && pass "POST" || fail "POST" "$RESULT"
 
 
@@ -57,7 +70,7 @@ diff "$TEST_INPUT" "$TEST_OUTPUT" >/dev/null && pass "GET" || fail "GET" "diffre
 
 
 random_file 256 $TEST_INPUT		# 256 MB
-RESULT=$(curl -XPUT --data-binary @"$TEST_INPUT" "$STORAGE_NODE"/"$TEST_REMOTE" 2>/dev/null)
+RESULT=$(curl_exec PUT "$STORAGE_NODE" "$TEST_REMOTE" "$TEST_INPUT")
 [ "$RESULT" == "HTTP/1.1 202 Accepted" ] && pass "PUT" || fail "PUT" "$RESULT"
 
 
@@ -65,9 +78,9 @@ RESULT=$(wget -O "$TEST_OUTPUT" "$STORAGE_NODE"/"$TEST_REMOTE" > /dev/null 2>&1)
 diff "$TEST_INPUT" "$TEST_OUTPUT" >/dev/null && pass "GET" || fail "GET" "diffrent files"
 
 
-RESULT=$(curl -XDELETE "$STORAGE_NODE"/"$TEST_REMOTE" 2>/dev/null)
+RESULT=$(curl_exec DELETE "$STORAGE_NODE" "$TEST_REMOTE")
 [ "$RESULT" == "HTTP/1.1 202 Accepted" ] && pass "DELETE" || fail "DELETE" "$RESULT"
 
 
-RESULT=$(curl "$STORAGE_NODE"/"$TEST_REMOTE" 2>/dev/null)
+RESULT=$(curl_exec GET "$STORAGE_NODE" "$TEST_REMOTE")
 [ "$RESULT" == "HTTP/1.0 404 Not Found" ] && pass "GET" || fail "GET" "$RESULT"

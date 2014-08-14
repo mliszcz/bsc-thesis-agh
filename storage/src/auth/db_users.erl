@@ -32,7 +32,14 @@ init(DatabaseLocation) ->
 			secret 			TEXT 		NOT NULL,
 			create_time 	INTEGER 	NOT NULL,
 			storage_grant	INTEGER 	NOT NULL DEFAULT 0
-		);").
+		);"),
+
+	case select_by_name("derp") of
+		{ok, _} -> pass;
+		{error, _} ->
+			User = instantiate_entity({0, "derp", "82f63b78", 0, 0}),
+			{ok, #user{name = "derp"}} = create(User)
+	end.
 
 
 deinit() ->
@@ -42,12 +49,12 @@ deinit() ->
 create(#user{} = Entity) ->
 
 	{rowid, NewId} = sqlite3:sql_exec(?DBNAME,
-		"INSERT INTO files (name, secret, create_time, storage_grant)
+		"INSERT INTO users (name, secret, create_time, storage_grant)
 					VALUES (:name, :secrt, :ctime, :grant);", [
 						{':name',  Entity#user.name},
 						{':secrt', Entity#user.secret},
 						{':ctime', Entity#user.create_time},
-						{':vpath', Entity#user.storage_grant}
+						{':grant', Entity#user.storage_grant}
 		]),
 
 	{ok, Entity#user {id=NewId}}.
@@ -65,7 +72,7 @@ update(#user{} = Entity) ->
 						{':name',  Entity#user.name},
 						{':secrt', Entity#user.secret},
 						{':ctime', Entity#user.create_time},
-						{':vpath', Entity#user.storage_grant}
+						{':grant', Entity#user.storage_grant}
 		]),
 
 	{ok, Entity}.

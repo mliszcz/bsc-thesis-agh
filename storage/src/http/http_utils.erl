@@ -7,7 +7,7 @@
 %% ====================================================================
 %% API functions
 %% ====================================================================
--export([hostaddr/1, parse_request/1, send_response/3, send_response/4]).
+-export([hostaddr/1, parse_request/1, send_response/2]).
 
 hostaddr(Socket) ->
 	case inet:peername(Socket) of
@@ -26,20 +26,22 @@ fetch_headers(Sock, Headers) ->
 		{ok, http_eoh} -> Headers
 	end.
 
+
 fetch_body(Sock, Length) ->
 	inet:setopts(Sock, [{packet, raw}]),
 	{ok, Body} = chunked_recv(Sock, << >>, Length),
 	% {ok, Body} = gen_tcp:recv(Sock, Length),	% this fails for large binaries (100+ MB)
 	Body.
 
+
 parse_request(Sock) ->
 	Headers = fetch_headers(Sock, dict:new()),
-
 	try dict:fetch('Content-Length', Headers) of
 		Length -> {Headers, fetch_body(Sock, list_to_integer(Length))}
 	catch
 		_:_ -> {Headers, << >>}
 	end.
+
 
 -define(CHUNK_SIZE, 67108864). % 64 MB 16777216).	% 16 MB
 chunked_recv(Sock, Buffer, Size) ->
@@ -52,8 +54,17 @@ chunked_recv(Sock, Buffer, Size) ->
 			chunked_recv(Sock, <<Buffer/binary, Bin/binary>>, Size-?CHUNK_SIZE)
 	end.
 
+
+send_response(Sock, {HttpStatus, self}) ->
+	send_response(Sock, HttpStatus, text);
+
+send_response(Sock, {HttpStatus, BinData}) ->
+	send_response(Sock, HttpStatus, file, BinData).
+
+
 send_response(Sock, HttpStatus, MimeType) ->
 	send_response(Sock, HttpStatus, MimeType, << >>).
+
 
 send_response(Sock, HttpStatus, MimeType, BinData) ->
 	Resp = case HttpStatus of

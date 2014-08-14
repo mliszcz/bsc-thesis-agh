@@ -73,117 +73,132 @@ listen(ListenSock) ->
 
 
 handle_request(Sock) ->
+
 	{ok, {http_request, Method, {_, FullPath}, _Version}} = gen_tcp:recv(Sock, 0),
 
-	case string:tokens(FullPath, "/") of
+	Response = case string:tokens(FullPath, "/") of
 
 		[Context | Elements] ->
+
 			Path = string:join(Elements, "/"),
+
 			log:info("accepted ~p from ~s (~s)", [Method, http_utils:hostaddr(Sock), FullPath]),
 
 			case Context of
 				"storage" 		-> handle_context_storage(Method, Path, Sock);
-				"favicon.ico" 	-> handle_other(Sock, Path);
-				_ 				-> handle_other(Sock, Path)
+				"favicon.ico" 	-> handle_other(Path);
+				_ 				-> handle_other(Path)
 			end;
 
-		[] -> handle_other(Sock, "/")
+		[] -> handle_other("/")
 	end,
 
+	http_utils:send_response(Sock, Response),
 	gen_tcp:close(Sock).
 
 
 handle_context_storage(Method, Path, Sock) ->
-	case Method of
-		'PUT'	-> handle_put(Sock, Path);
-		'GET'	-> handle_get(Sock, Path);
-		'POST'	-> handle_post(Sock, Path);
-		'DELETE'-> handle_delete(Sock, Path);
-		'HEAD'	-> handle_head(Sock, Path);
-		_		-> handle_other(Sock, Path)
+
+	log:info("storage context"),
+
+	{Headers, BinData} = http_utils:parse_request(Sock),
+
+	try extract_credentials(Headers) of
+		{User, Hmac} -> 
+			case Method of
+				'PUT'	->    handle_put(User, Path, Hmac, BinData);
+				'GET'	->    handle_get(User, Path, Hmac, BinData);
+				'POST'	->   handle_post(User, Path, Hmac, BinData);
+				'DELETE'-> handle_delete(User, Path, Hmac, BinData);
+				'HEAD'	->   handle_head(User, Path, Hmac, BinData);
+				_		->  handle_other(Path)
+			end
+	catch
+		_:_ -> handle_other(Path)
 	end.
 
 %%
 %% method-specific handlers
 %%
 
-fetch_auth(Headers) ->
-	try dict:fetch('Authorization', Headers) of
-		AuthStr ->
-			case re:run(AuthStr, "^HMAC\\s+(\\d+):([a-f0-9]+)$",
-				[global, {capture, all_but_first, list}]) of
+extract_credentials(Headers) ->
 
-				{match, [[UserIdStr, HmacStr]]} ->
-					log:info("hmac validated"),
-					{list_to_integer(UserIdStr), list_to_binary(HmacStr)};
-				_ ->
-					log:info("hmac parsing failed"),
-					{unknown, unknown}
-			end
-	catch
-			_:_ ->
-				log:info("hmac empty"),
-				{unknown, unknown}
-	end.
+	% this call will raise exception if anything goes wrong
+
+	log:info("extracting credentials from ~p", [dict:fetch('Authorization', Headers)]),
+
+	{match, [[UserIdStr, HmacStr]]} = re:run(
+		dict:fetch('Authorization', Headers),
+		"^HMAC\\s+(\\d+):([a-f0-9]+)$",
+		[global, {capture, all_but_first, list}]
+	),
+
+	log:info("extracted ~p : ~p", [UserIdStr, HmacStr]),
+
+	{list_to_integer(UserIdStr), HmacStr}.
 
 
-handle_post(Sock, Path) ->
-
-	{Headers, BinData} = http_utils:parse_request(Sock),
-	{User, Hmac} = fetch_auth(Headers),
+handle_post(User, Path, Hmac, BinData) ->
 
 	case storage:create(node(), User, Path, Hmac, BinData) of
-		{ok,	created}		-> http_utils:send_response(Sock, 'Created',	text);
-		{error,	timeout}		-> http_utils:send_response(Sock, 'NotAllowed',	text);
-		{error,	file_exists}	-> http_utils:send_response(Sock, 'NotAllowed',	text);
-		{error,	_}				-> http_utils:send_response(Sock, 'BadRequest',	text)
+		{ok,	created}		-> {'Created',		self};
+		{error,	timeout}		-> {'NotAllowed',	self};
+		{error,	file_exists}	-> {'NotAllowed',	self};
+		{error, authenticaiton_failed}	-> {'Unauthorized', self};
+		{error,	_}				-> {'BadRequest',	self}
 	end.
 
-handle_get(Sock, Path) when Path == "/" ->
-	{Headers, _} = http_utils:parse_request(Sock),
-	{User, Hmac} = fetch_auth(Headers),
+
+handle_get(User, Path, Hmac, _BinData) when Path == "/" ->
+
 	case storage:list(node(), User, none_path, Hmac) of
-		{ok,	ErlList}	-> http_utils:send_response(Sock, 'OK',			text, list_to_binary(lists:flatten(io_lib:format("~p", [ErlList]))));
-		{error,	_}			-> http_utils:send_response(Sock, 'BadRequest',	text)
+		{ok,	ErlList}	-> {'OK',			util:term_to_binary_string(ErlList)};
+		{error, authenticaiton_failed}	-> {'Unauthorized', self};
+		{error,	_}			-> {'BadRequest',	self}
 	end;
 
-handle_get(Sock, Path) ->
-	{Headers, _} = http_utils:parse_request(Sock),
-	{User, Hmac} = fetch_auth(Headers),
+
+handle_get(User, Path, Hmac, _BinData) ->
+
 	case storage:read(node(), User, Path, Hmac) of
-		{ok,	RawData}	-> http_utils:send_response(Sock, 'OK',			file, RawData);
-		{error,	timeout}	-> http_utils:send_response(Sock, 'NotFound',	text);
-		{error, not_found}	-> http_utils:send_response(Sock, 'NotFound',	text);
-		{error,	_}			-> http_utils:send_response(Sock, 'BadRequest',	text)
+		{ok,	RawData}	-> {'OK',			RawData};
+		{error,	timeout}	-> {'NotFound',		self};
+		{error, not_found}	-> {'NotFound', 	self};
+		{error, authenticaiton_failed}	-> {'Unauthorized', self};
+		{error,	_}			-> {'BadRequest', 	self}
 	end.
 
-handle_put(Sock, Path) ->
-	{Headers, BinData} = http_utils:parse_request(Sock),
-	{User, Hmac} = fetch_auth(Headers),
+
+handle_put(User, Path, Hmac, BinData) ->
+
 	case storage:update(node(), User, Path, Hmac, BinData) of
-		{ok,	_}			-> http_utils:send_response(Sock, 'Accepted',	text);
-		{error, not_found}	-> http_utils:send_response(Sock, 'NotFound',	text);
-		{error,	_}			-> http_utils:send_response(Sock, 'BadRequest',	text)
+		{ok,	_}			-> {'Accepted',		self};
+		{error, not_found}	-> {'NotFound',		self};
+		{error, authenticaiton_failed}	-> {'Unauthorized', self};
+		{error,	_}			-> {'BadRequest',	self}
 	end.
 
-handle_delete(Sock, Path) ->
-	{Headers, _} = http_utils:parse_request(Sock),
-	{User, Hmac} = fetch_auth(Headers),
+
+handle_delete(User, Path, Hmac, _BinData) ->
+
 	case storage:delete(node(), User, Path, Hmac) of
-		{ok,	deleted}	-> http_utils:send_response(Sock, 'Accepted',	text);
-		{error,	not_found}	-> http_utils:send_response(Sock, 'NotFound',	text);
-		{error,	_}			-> http_utils:send_response(Sock, 'BadRequest',	text)
+		{ok,	deleted}	-> {'Accepted',		self};
+		{error,	not_found}	-> {'NotFound',		self};
+		{error, authenticaiton_failed}	-> {'Unauthorized', self};
+		{error,	_}			-> {'BadRequest',	self}
 	end.
 
-handle_head(Sock, Path) ->
-	{Headers, _} = http_utils:parse_request(Sock),
-	{User, Hmac} = fetch_auth(Headers),
+
+handle_head(User, Path, Hmac, _BinData) ->
+
 	case storage:find(node(), User, Path, Hmac) of
-		{ok,	Node	}	-> http_utils:send_response(Sock, 'OK',			text, list_to_binary(lists:flatten(io_lib:format("~p", [Node]))));
-		{error, not_found}	-> http_utils:send_response(Sock, 'NotFound',	text);
-		{error,	_}			-> http_utils:send_response(Sock, 'BadRequest',	text)
+		{ok,	Node	}	-> {'OK',			util:term_to_binary_string(Node)};
+		{error, not_found}	-> {'NotFound',		self};
+		{error, authenticaiton_failed}	-> {'Unauthorized', self};
+		{error,	_}			-> {'BadRequest',	self}
 	end.
 
-handle_other(Sock, _Path) ->
+
+handle_other(_Path) ->
 	log:warn("unsupported operation requested"),
-	http_utils:send_response(Sock, 'BadRequest', text).
+	{'BadRequest', self}.
