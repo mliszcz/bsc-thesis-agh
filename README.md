@@ -16,3 +16,26 @@ Praca Inzynierska
 * erlang-sqlite  
   https://github.com/alexeyr/erlang-sqlite3
 *
+
+### REST API
+One can access files using HTTP requests and REST API. Supported methods:
+* `POST` - create
+* `GET` - read
+* `PUT` - update
+* `DELETE` - delete
+* `HEAD` - search (in progress)
+
+#### POST
+```
+POST /storage/path/to/my/file.dat HTTP/1.0
+Authorization: HMAC 123456:0xfbdb1d1b18aa6c08324b7d64b71fb76370690e1d
+Content-Type: application/octet-stream
+Content-Length: 2048
+<<binary data>>
+```
+where:
+* file *path/to/my/file.dat* will be created
+* *123456* is User ID
+* HMAC is calculated from concatenated words *'create'*, path and user id using md5(*password*) as key
+  `hmac_sha1(md5("secret"), "create/path/to/my/file.dat123456") = 0xfbdb1d1b18aa6c08324b7d64b71fb76370690e1d`
+

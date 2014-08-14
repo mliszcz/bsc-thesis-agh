@@ -5,7 +5,7 @@
 # accept.sh storage node acceptance test
 # author: Michal Liszcz
 # 
-# test PUT, POST, GET & DELETE methods
+# test POST, PUT, GET & DELETE methods
 #
 # generating large tests files requires some seconds,
 # but this is needed to test chunked request reading
@@ -48,8 +48,8 @@ rm -f $TEST_INPUT > /dev/null 2>&1
 rm -f $TEST_OUTPUT > /dev/null 2>&1
 
 random_file 128 $TEST_INPUT		# 128 MB
-RESULT=$(curl -XPUT --data-binary @"$TEST_INPUT" "$STORAGE_NODE"/"$TEST_REMOTE" 2>/dev/null)
-[ "$RESULT" == "HTTP/1.0 201 Created" ] && pass "PUT" || fail "PUT" "$RESULT"
+RESULT=$(curl -XPOST --data-binary @"$TEST_INPUT" "$STORAGE_NODE"/"$TEST_REMOTE" 2>/dev/null)
+[ "$RESULT" == "HTTP/1.0 201 Created" ] && pass "POST" || fail "POST" "$RESULT"
 
 
 RESULT=$(wget -O "$TEST_OUTPUT" "$STORAGE_NODE"/"$TEST_REMOTE" > /dev/null 2>&1)
@@ -57,8 +57,8 @@ diff "$TEST_INPUT" "$TEST_OUTPUT" >/dev/null && pass "GET" || fail "GET" "diffre
 
 
 random_file 256 $TEST_INPUT		# 256 MB
-RESULT=$(curl -XPOST --data-binary @"$TEST_INPUT" "$STORAGE_NODE"/"$TEST_REMOTE" 2>/dev/null)
-[ "$RESULT" == "HTTP/1.1 202 Accepted" ] && pass "POST" || fail "POST" "$RESULT"
+RESULT=$(curl -XPUT --data-binary @"$TEST_INPUT" "$STORAGE_NODE"/"$TEST_REMOTE" 2>/dev/null)
+[ "$RESULT" == "HTTP/1.1 202 Accepted" ] && pass "PUT" || fail "PUT" "$RESULT"
 
 
 RESULT=$(wget -O "$TEST_OUTPUT" "$STORAGE_NODE"/"$TEST_REMOTE" > /dev/null 2>&1)

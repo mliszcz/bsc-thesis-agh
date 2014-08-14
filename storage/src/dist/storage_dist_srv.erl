@@ -52,12 +52,16 @@ handle_call({request, #request{type=create, path=Path}=Request},
 	log:info("creating ~s", [Path]),
 	spawn_link(
 		fun() ->
-			Size = byte_size(Request#request.data),
-			Fills = broadcall(State, ?CORE_SERVER, {reserve, Size}),
-			{_, Best} = lists:min(lists:map(fun({Node, Fill}) -> {Fill,Node} end, Fills)),
-			% TODO - handle case when system is full (Fills may be empty)!
-			gen_server:cast({?CORE_SERVER, Best}, {{request, Request}, From}),
-			broadcast(sets:del_element(Best, State), ?CORE_SERVER, {release, Size})
+			case gen_server:call({?AUTH_SERVER, node()}, {authenticate, Request}) of
+				{error, _} -> gen_server:reply(From, {error, authenticaiton_failed});
+				{ok, 	_} ->
+					Size = byte_size(Request#request.data),
+					Fills = broadcall(State, ?CORE_SERVER, {reserve, Size}),
+					{_, Best} = lists:min(lists:map(fun({Node, Fill}) -> {Fill,Node} end, Fills)),
+					% TODO - handle case when system is full (Fills may be empty)!
+					gen_server:cast({?CORE_SERVER, Best}, {{request, Request}, From}),
+					broadcast(sets:del_element(Best, State), ?CORE_SERVER, {release, Size})
+				end
 		end),
 	{noreply, State};
 
@@ -67,10 +71,14 @@ handle_call({request, #request{type=update, path=Path}=Request},
 	log:info("updating ~s", [Path]),
 	spawn_link(
 		fun() ->
-			try gen_server:call({?DIST_SERVER, node()}, {request, Request#request{type=find, data=none}}) of
-				{ok, Node} -> gen_server:cast({?CORE_SERVER, Node}, {{request, Request}, From})
-			catch
-				_:{timeout, _} -> pass
+			case gen_server:call({?AUTH_SERVER, node()}, {authenticate, Request}) of
+				{error, _} -> gen_server:reply(From, {error, authenticaiton_failed});
+				{ok, 	_} ->
+					try gen_server:call({?DIST_SERVER, node()}, {request, Request#request{type=find, data=none}}) of
+						{ok, Node} -> gen_server:cast({?CORE_SERVER, Node}, {{request, Request}, From})
+					catch
+						_:{timeout, _} -> pass
+					end
 			end
 		end),
 	{noreply, State};
@@ -79,7 +87,13 @@ handle_call({request, #request{type=update, path=Path}=Request},
 handle_call({request, #request{type=Type}=Request}, From, State)
 	when Type == read ; Type == delete ; Type == find ->
 
-	async_broadcast(State, ?CORE_SERVER, {{request, Request}, From}),
+	spawn_link(
+		fun() ->
+			case gen_server:call({?AUTH_SERVER, node()}, {authenticate, Request}) of
+				{error, _} -> gen_server:reply(From, {error, authenticaiton_failed});
+				{ok, 	_} -> broadcast(State, ?CORE_SERVER, {{request, Request}, From})
+			end
+		end),
 	{noreply, State};
 
 
@@ -87,8 +101,12 @@ handle_call({request, #request{type=list}=Request}, From, State) ->
 	log:info("listing"),
 	spawn_link(
 		fun() ->
-			List = broadcall(State, ?CORE_SERVER, {request, Request, From}),
-			gen_server:reply(From, {ok, List})
+			case gen_server:call({?AUTH_SERVER, node()}, {authenticate, Request}) of
+				{error, _} -> gen_server:reply(From, {error, authenticaiton_failed});
+				{ok,	_} ->
+					List = broadcall(State, ?CORE_SERVER, {request, Request, From}),
+					gen_server:reply(From, {ok, List})
+			end
 		end),
 	{noreply, State};
 
