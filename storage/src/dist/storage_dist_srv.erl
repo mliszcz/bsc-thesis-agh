@@ -74,7 +74,11 @@ handle_call({request, #request{type=update, path=Path}=Request},
 			case gen_server:call({?AUTH_SERVER, node()}, {authenticate, Request}) of
 				{error, _} -> gen_server:reply(From, {error, authenticaiton_failed});
 				{ok, 	_} ->
-					try gen_server:call({?DIST_SERVER, node()}, {request, Request#request{type=find, data=none}}) of
+					% prepare find request to locate node where file is kept
+					% tampering with request and exposing dist call {broadcast, ...}
+					% is huge security threat, but there is no other, simple way
+					FindRequest = Request#request{type=find, data=none},
+					try gen_server:call({?DIST_SERVER, node()}, {broadcast, ?CORE_SERVER, {request, FindRequest}}) of
 						{ok, Node} -> gen_server:cast({?CORE_SERVER, Node}, {{request, Request}, From})
 					catch
 						_:{timeout, _} -> pass
