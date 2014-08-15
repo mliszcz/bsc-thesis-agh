@@ -33,8 +33,12 @@ should_log(Level) ->
 
 backtrace(Nth) ->
 	catch throw(away),
-	{Module, Fun, Arity, _} = lists:nth(Nth, erlang:get_stacktrace()),
-	{Module, Fun, Arity}.
+	try lists:nth(Nth, erlang:get_stacktrace()) of
+		{Module, Fun, Arity, _} -> {Module, Fun, Arity}
+	catch
+		% error:{function_clause, _} -> {unknown, unknown, '?'} % WHY U NO WORK???
+		_:_ -> {unknown, unknown, '?'}
+	end.
 
 log_stdout(Level, Msg, Data) ->
 	case should_log(Level) of
