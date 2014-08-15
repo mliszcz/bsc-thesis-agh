@@ -23,19 +23,44 @@ One can access files using HTTP requests and REST API. Supported methods:
 * `GET` - read
 * `PUT` - update
 * `DELETE` - delete
-* `HEAD` - search (in progress)
+* `HEAD` - search (work in progress)
 
-#### POST
+#### `/storage` context
+Example
+
 ```
-POST /storage/path/to/my/file.dat HTTP/1.0
-Authorization: HMAC 123456:fbdb1d1b18aa6c08324b7d64b71fb76370690e1d
+POST /storage/path/to/my/file.dat HTTP/1.1
+Host: ds-01.storage.example.com:9001
+Authorization: HMAC 0147d6e0a2d028d24438c90c27e6d149:6c51adc384572536d9c8a9dbcfbebf590942771f
 Content-Type: application/octet-stream
 Content-Length: 2048
 <<binary data>>
 ```
-where:
-* file *path/to/my/file.dat* will be created
-* *123456* is User ID
-* HMAC is calculated from concatenated words *'create'*, path and user id using md5(*password*) as a key  
-  `hmac_sha1(md5("secret"), "createpath/to/my/file.dat123456") = fbdb1d1b18aa6c08324b7d64b71fb76370690e1d`
 
+where:
+* *path/to/my/file.dat* is virtual file path
+* *0147d6e0a2d028d24438c90c27e6d149* is user id
+* *6c51adc384572536d9c8a9dbcfbebf590942771f* is *HMAC*  
+  HMAC is calculated from request body (method, path, user id) and hashed using md5(*password*) as a key  
+  e.g.: `hmac_sha1(md5("secret"), "POSTpath/to/my/file.dat0147d6e0a2d028d24438c90c27e6d149") = 6c51adc384572536d9c8a9dbcfbebf590942771f`
+
+#### `/user` context
+
+Create user (derp:secret) request
+
+```
+POST /user/derp HTTP/1.1
+Host: ds-01.storage.example.com:9001
+Content-Type: text/plain; charset=UTF-8
+Content-Length: 6
+secret
+```
+
+In response we get new user id
+
+```
+HTTP/1.0 201 Created
+Content-Type: text/plain; charset=UTF-8
+Content-Length: 32
+0147d6e0a2d028d24438c90c27e6d149
+```
