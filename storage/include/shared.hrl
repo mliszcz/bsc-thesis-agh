@@ -5,10 +5,10 @@
 
 
 % node server modules
--define(CORE_SERVER, storage_core_srv).
--define(DIST_SERVER, storage_dist_srv).
--define(AUTH_SERVER, storage_auth_srv).
 -define(UUID_SERVER, storage_uuid_srv).
+-define(CORE_SERVER, storage_core_srv).
+-define(AUTH_SERVER, storage_auth_srv).
+-define(DIST_SERVER, storage_dist_srv).
 -define(HTTP_SERVER, storage_http_srv).
 
 

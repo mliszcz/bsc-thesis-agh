@@ -1,5 +1,6 @@
 %% @author Michal Liszcz
-%% @doc 128bit unique identifier generator (48bit milisecond timestamp + 48bit mac + 32bit random)
+%% @doc 128bit unique identifier generator
+%% (48bit milisecond timestamp + 48bit mac + 32bit random)
 
 -module(storage_uuid_srv).
 -include("shared.hrl").
@@ -37,7 +38,7 @@ generate() ->
 
 init(_Args) ->
 	log:info("starting uuid generator"),
-	{ok, get_mac_address("eth0")}.
+	{ok, get_mac_address(util:get_env(uuid_interface_name))}.
 
 handle_call(generate, _From, State) ->
 	Now = util:timestamp(),

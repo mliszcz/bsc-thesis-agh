@@ -19,4 +19,6 @@
 
 {dist_initial_node, "nodename@nodehost"}.
 
+{uuid_interface_name, "eth0"}.			% source of MAC address for UUID generator
+
 {http_port, 8090}.

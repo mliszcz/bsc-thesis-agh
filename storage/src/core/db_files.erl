@@ -28,7 +28,7 @@ init(DatabaseLocation) ->
 	sqlite3:sql_exec_script(?DBNAME,
 		"CREATE TABLE IF NOT EXISTS files (
 			id 				TEXT 		NOT NULL PRIMARY KEY,
-			owner 			INTEGER 	NOT NULL,
+			owner 			TEXT 		NOT NULL,
 			vpath 			TEXT 		NOT NULL,
 			bytes 			INTEGER 	NOT NULL,
 			access_mode 	INTEGER 	NOT NULL,
@@ -148,9 +148,9 @@ calculate_total_size() ->
 %% ====================================================================
 
 instantiate_file({Id, Owner, VPath, Bytes, AccMode, CreatTime}) ->
-	#file{	id 			= Id,
-			owner 		= Owner,
-			vpath 		= VPath,
+	#file{	id 			= binary_to_list(Id),
+			owner 		= binary_to_list(Owner),
+			vpath 		= binary_to_list(VPath),
 			bytes 		= Bytes,
 			access_mode = AccMode,
 			create_time = CreatTime

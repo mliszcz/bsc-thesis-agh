@@ -37,7 +37,7 @@ init(DatabaseLocation) ->
 	case select_by_name("derp") of
 		{ok, _} -> pass;
 		{error, _} ->
-			User = instantiate_entity({0, "derp", "82f63b78", 0, 0}),
+			User = instantiate_entity({<< >>, <<"derp">>, <<"82f63b78">>, 0, 0}),
 			{ok, #user{name = "derp"}} = create(User)
 	end.
 
@@ -146,9 +146,9 @@ exists_by_name(Name) ->
 %% ====================================================================
 
 instantiate_entity({Id, Name, Secret, CreatTime, StorGrant}) ->
-	#user{	id 				= Id,
-			name 			= Name,
-			secret 			= Secret,
+	#user{	id 				= binary_to_list(Id),
+			name 			= binary_to_list(Name),
+			secret 			= binary_to_list(Secret),
 			create_time 	= CreatTime,
 			storage_grant 	= StorGrant
 			}.

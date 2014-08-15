@@ -39,6 +39,7 @@ PREFIX=ds			# this will generate names like $(PREFIX)1, $(PREFIX)2, ...
 COOKIE=ciastko
 INIT_NODE="${PREFIX}1@$(hostname -s)"
 PORTS=9001
+INTERFACE="eth0"
 
 source make_cluster.properties
 
@@ -72,7 +73,8 @@ while [ $(( NODES-- )) -ne 0 ]; do
 {core_work_dir,			"work_dir"}.
 {core_storage_quota,	$QUOTA}.
 {core_memory_quota,		$MEMORY}.
-{dist_initial_node,		"$INIT_NODE"}.	
+{dist_initial_node,		"$INIT_NODE"}.
+{uuid_interface_name,	"$INTERFACE"}.	
 {http_port,				$PORTNUM}.
 /EOF
 

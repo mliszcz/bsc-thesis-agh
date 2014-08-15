@@ -99,8 +99,6 @@ handle_request(Sock) ->
 
 handle_context_storage(Method, Path, Sock) ->
 
-	log:info("storage context"),
-
 	{Headers, BinData} = http_utils:parse_request(Sock),
 
 	try extract_credentials(Headers) of
@@ -125,15 +123,11 @@ extract_credentials(Headers) ->
 
 	% this call will raise exception if anything goes wrong
 
-	log:info("extracting credentials from ~p", [dict:fetch('Authorization', Headers)]),
-
 	{match, [[UserIdStr, HmacStr]]} = re:run(
 		dict:fetch('Authorization', Headers),
 		"^HMAC\\s+([a-f0-9]+):([a-f0-9]+)$",
 		[global, {capture, all_but_first, list}]
 	),
-
-	log:info("extracted ~p : ~p", [UserIdStr, HmacStr]),
 
 	{UserIdStr, HmacStr}.
 

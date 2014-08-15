@@ -46,6 +46,8 @@ where:
 
 #### `/user` context
 
+**NOT SUPPORTED YET**
+
 Create user (derp:secret) request
 
 ```

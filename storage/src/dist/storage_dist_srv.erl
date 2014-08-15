@@ -23,7 +23,7 @@
 %% ------------------------------------------------------------------
 
 start_link() ->
-	log:info("starting"),
+	log:info("dist starting"),
 	gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
 stop() ->
@@ -35,6 +35,8 @@ stop() ->
 %% ------------------------------------------------------------------
 
 init(_Args) ->
+
+	% process_flag(trap_exit, true),
 
 	% globals:set(capacity, util:get_env(dist_storage_cap)),
 
@@ -77,8 +79,13 @@ handle_call({request, #request{type=update, path=Path}=Request},
 					% prepare find request to locate node where file is kept
 					% tampering with request and exposing dist call {broadcast, ...}
 					% is huge security threat, but there is no other, simple way
+
 					FindRequest = Request#request{type=find, data=none},
-					try gen_server:call({?DIST_SERVER, node()}, {broadcast, ?CORE_SERVER, {request, FindRequest}}) of
+
+					try gen_server:call({?DIST_SERVER, node()},
+						{broadcast, ?CORE_SERVER,
+						{request, FindRequest}}, 4000) of 	% same timeout issue as in auth_serv:fetch_user
+						
 						{ok, Node} -> gen_server:cast({?CORE_SERVER, Node}, {{request, Request}, From})
 					catch
 						_:{timeout, _} -> pass
@@ -116,7 +123,10 @@ handle_call({request, #request{type=list}=Request}, From, State) ->
 
 
 handle_call({broadcast, Process, Message}, From, State) ->
-	async_broadcast(State, Process, {Message, From}),
+	spawn_link(
+		fun() ->
+			broadcast(State, Process, {Message, From})
+		end),
 	{noreply, State};
 
 
@@ -137,8 +147,8 @@ handle_info(_Info, State) ->
 	{noreply, State}.
 
 
-terminate(_Reason, _State) ->
-	log:info("closing"),
+terminate(Reason, _State) ->
+	log:info("terminating dist due to ~p", [Reason]),
 	ok.
 
 
@@ -180,10 +190,3 @@ broadcall(RemoteNodes, Process, Message) ->
 			end
 		end,
 		[], RemoteNodes).
-
-async_broadcast(RemoteNodes, Process, Message) ->
-	log:info("spawning broadcast"),
-	spawn_link(
-		fun() ->
-			broadcast(RemoteNodes, Process, Message)
-		end).

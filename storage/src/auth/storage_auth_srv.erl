@@ -25,7 +25,7 @@
 %% ------------------------------------------------------------------
 
 start_link() ->
-	log:info("starting"),
+	log:info("auth starting"),
 	gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
 stop() ->
@@ -60,7 +60,7 @@ handle_call({authenticate, #request{user=UserId, hmac=Hmac}=Request},
 			AcceptedL1 = case ets:lookup(State, UserId) of
 
 				% entry exists in cache and is valid
-				[{UserId, Secret, Expires}] when Expires < Now ->
+				[{UserId, Secret, Expires}] when Expires > Now ->
 
 					% try to validate request with cached secret
 					case Hmac == calculate_hmac(Request, Secret) of
@@ -76,36 +76,36 @@ handle_call({authenticate, #request{user=UserId, hmac=Hmac}=Request},
 					end;
 
 				% no entry or is expired
-				_ ->
-					false
+				_ -> false
 			end,
 
 			AcceptedL2 = case AcceptedL1 of
 				true -> true;
 				false ->
 
-					log:info("fetching user"),
+					log:info("user ~s not found in cache", [UserId]),
+
 					% ask other nodes for user identity
 					case fetch_user(UserId) of
 
 						% obtained secret is valid, update cache and test hmac
 						{ok, UserEntity} ->
-							log:info("fetched"),
 							ets:insert(State, {UserEntity#user.id, UserEntity#user.secret,
 								Now+?EXPIRATION_TIME}),
-							CalcHmac = calculate_hmac(Request, UserEntity#user.secret),
-							log:info("comparing calc hmac ~p with given ~p", [CalcHmac, Hmac]),
-
 							Hmac == calculate_hmac(Request, UserEntity#user.secret);
 
 						% dafuq are u?
-						{error, _} -> log:info("fucked"), false
+						{error, _} -> false
 					end
 			end,
 
 			case AcceptedL2 of
-				true -> log:info("repl ok"), gen_server:reply(From, {ok, authenticated});
-				false -> log:info("repl err"), gen_server:reply(From, {error, authentication_failed})
+				true ->
+					log:info("user ~s authenticated", [UserId]),
+					gen_server:reply(From, {ok, authenticated});
+				false ->
+					log:warn("authentication failed for user ~s", [UserId]),
+					gen_server:reply(From, {error, authentication_failed})
 			end
 
 		end),
@@ -118,9 +118,10 @@ handle_call({sign_request, #request{}=Request, Secret}, _From, State) ->
 
 
 handle_cast({{identity, UserId}, ReplyTo}, State) ->
-	log:info("serving identity ~p", [UserId]),
 	case db_users:select(UserId) of
-		{ok, UserEntity} -> gen_server:reply(ReplyTo, {ok, UserEntity});
+		{ok, UserEntity} ->
+			log:info("serving ~p", [UserEntity]),
+			gen_server:reply(ReplyTo, {ok, UserEntity});
 		{error, _} -> pass
 	end,
 	{noreply, State};
@@ -167,7 +168,22 @@ calculate_hmac(
 
 fetch_user(UserId) ->
 
-	try gen_server:call({?DIST_SERVER, node()}, {broadcast, ?AUTH_SERVER, {identity, UserId}}) of
+	%
+	% timeout is set explicitly, cause otherwise dist and auth were both
+	% crashing with no reason after the call timed out
+	% i can not explain this, but it seems to works with 4s timeout
+	% whereas crashes with 5s (default) timeout
+	% 
+	% traping exit signals in dist server also prevents it from crashing
+	% but no exit message is received! (regardless the timeout value)
+	%
+	% no fucking idea whats going on
+	%
+
+	try gen_server:call({?DIST_SERVER, node()},
+		{broadcast, ?AUTH_SERVER,
+		{identity, UserId}}, 4000) of
+
 		{ok, UserEntity} -> {ok, UserEntity}
 	catch
 		_:{timeout, _} -> {error, not_found}
