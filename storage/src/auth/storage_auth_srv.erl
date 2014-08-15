@@ -90,7 +90,7 @@ handle_call({authenticate, #request{user=UserId, hmac=Hmac}=Request},
 
 						% obtained secret is valid, update cache and test hmac
 						{ok, UserEntity} ->
-							ets:insert(State, {UserEntity#user.id, UserEntity#user.secret,
+							ets:insert(State, {UserEntity#user.name, UserEntity#user.secret,
 								Now+?EXPIRATION_TIME}),
 							Hmac == calculate_hmac(Request, UserEntity#user.secret);
 
@@ -118,10 +118,8 @@ handle_call({sign_request, #request{}=Request, Secret}, _From, State) ->
 
 
 handle_cast({{identity, UserId}, ReplyTo}, State) ->
-	case db_users:select(UserId) of
-		{ok, UserEntity} ->
-			log:info("serving ~p", [UserEntity]),
-			gen_server:reply(ReplyTo, {ok, UserEntity});
+	case db_users:select_by_name(UserId) of
+		{ok, UserEntity} -> gen_server:reply(ReplyTo, {ok, UserEntity});
 		{error, _} -> pass
 	end,
 	{noreply, State};

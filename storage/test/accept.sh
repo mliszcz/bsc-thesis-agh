@@ -44,7 +44,7 @@ function curl_exec {
 	# $3 - target
 	# $4 - file
 
-	local userid="0147d9d3040428d24438c90c07807697"
+	local userid="derp"
 	local secret="82f63b78"
 	local hmac=$(calc_hmac $secret "${1}${userid}${3}")
 

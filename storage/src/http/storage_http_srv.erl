@@ -125,7 +125,8 @@ extract_credentials(Headers) ->
 
 	{match, [[UserIdStr, HmacStr]]} = re:run(
 		dict:fetch('Authorization', Headers),
-		"^HMAC\\s+([a-f0-9]+):([a-f0-9]+)$",
+		% "^HMAC\\s+([a-f0-9]+):([a-f0-9]+)$",
+		"^HMAC\\s+(\\w+):([a-f0-9]+)$",
 		[global, {capture, all_but_first, list}]
 	),
 
