@@ -115,7 +115,7 @@ handle_call({request, #request{type=list}=Request}, From, State) ->
 			case gen_server:call({?AUTH_SERVER, node()}, {authenticate, Request}) of
 				{error, _} -> gen_server:reply(From, {error, authenticaiton_failed});
 				{ok,	_} ->
-					List = broadcall(State, ?CORE_SERVER, {request, Request, From}),
+					List = broadcall(State, ?CORE_SERVER, {{request, Request}, From}),
 					gen_server:reply(From, {ok, List})
 			end
 		end),

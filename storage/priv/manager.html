@@ -1,0 +1,255 @@
+
+<!--
+ * manager.html
+ * author: Michal Liszcz
+ *
+ * simple, single-page, stateless storage manager
+ *
+-->
+
+<!DOCTYPE html>
+
+<html ng-app="managerApp">
+
+	<head>
+
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+		<title>storage system manager</title>
+
+		<link rel="stylesheet" href="http://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css">
+		<link rel="stylesheet" href="http://maxcdn.bootstrapcdn.com/font-awesome/4.1.0/css/font-awesome.min.css" />
+
+		<style>
+			.fixed-width {
+				width: 900px;
+				margin-left: auto;
+				margin-right: auto;
+			}
+		</style>
+
+		<script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/angularjs/1.2.22/angular.min.js"></script>
+		<script type="text/javascript" src="http://crypto-js.googlecode.com/svn/tags/3.1.2/build/rollups/hmac-sha1.js"></script>
+		<script type="text/javascript" src="http://crypto-js.googlecode.com/svn/tags/3.1.2/build/rollups/md5.js"></script>
+
+	</head>
+
+	<body ng-controller="mainController">
+
+		<header>
+
+			<nav class="navbar navbar-default">
+
+				<div class="container-fluid fixed-width">
+
+					<div class="row">
+
+						<div class="navbar-header">
+							<span class="navbar-brand">storage system manager</span>
+						</div>
+
+					</div>
+
+					<div class="row">
+
+						<span class="navbar-text navbar-left">logged in as: {{user.login}}</span>
+
+						<form 	id="loginForm" ng-controller="loginController"
+								ng-submit="submit(loginForm.login, loginForm.secret)"
+								class="navbar-form navbar-right" >
+
+							<input type="text" 		ng-model="loginForm.login" 		class="form-control" placeholder="login" />
+							<input type="password" 	ng-model="loginForm.secret" 	class="form-control" placeholder="password" />
+							<input type="submit" 	value="Login!" 					class="btn btn-primary btn-sm" />
+						</form>
+
+					</div>
+
+				</div>
+
+			</nav>
+
+		</header>
+
+		<div class="fixed-width">
+
+
+			<div class="panel panel-default">
+
+				<div class="panel-heading">upload file</div>
+
+
+			<form 	ng-controller="uploadController"
+						ng-submit="submit(uploadForm.dir, uploadForm.name)"
+						class="form-inline panel-body" >
+
+				<span class="form-control">storage/</span>
+				<input 								type="text" 	ng-model="uploadForm.dir" 	class="form-control" placeholder="directory" />
+				<span class="form-control">/</span>
+				<input 								type="text" 	ng-model="uploadForm.name" 	class="form-control" placeholder="filename" />
+				<input filelist-bind name="file" 	type="file" 	ng-model="fuck_u_angular"    />
+				<input 								type="submit" 	value="Upload!" 			class="btn btn-primary btn-sm" />
+			</form>
+
+			</div>
+	
+			<div ng-controller="storageController" class="panel panel-default" >
+	
+				<div class="panel-heading">
+					files
+					<button ng-click="reload()" class="btn btn-success btn-sm pull-right">
+						<span class="glyphicon glyphicon-refresh"></span> refresh
+					</button>
+				</div>
+	
+				<table class="table table-hover">
+					<tr>
+						<th>id</th>
+						<th>node</th>
+						<th>path</th>
+						<th>size [bytes]</th>
+					</tr>
+					<tr ng-repeat="file in fileList" ng-click="download(file.vpath)">
+						<td>{{file.id}}</td>
+						<td>{{file.node}}</td>
+						<td>{{file.vpath}}</td>
+						<td>{{file.bytes}}</td>
+					</tr>
+				</table>
+			</div>
+	
+			<footer style="text-align: center;">
+				<p class="text-muted credit">storage @
+					<a href="http://github.com/mliszcz/inz" target="_blank">
+						http://github.com/mliszcz/inz
+					</a>
+				</p>
+			</footer>
+
+		</div>
+
+		<script>
+
+			var managerApp = angular.module('managerApp', [])
+
+			managerApp.directive('filelistBind', function() {
+				return function( scope, elm, attrs ) {
+					elm.bind('change', function( evt ) {
+						scope.$apply(function() {
+							scope[ attrs.name ] = evt.target.files;
+						})
+					})
+				}
+			})
+
+			managerApp.controller('mainController', function($scope) {
+
+				// user credentials
+				$scope.user = { login: '', secret: '' }
+			})
+
+			managerApp.controller('loginController', function($scope) {
+
+				$scope.submit = function(login, secret) {
+					$scope.user.login = login
+					$scope.user.secret = secret // CryptoJS.MD5(secret)
+				}
+
+				// default user
+				$scope.submit('derp', '82f63b78')
+			})
+
+			managerApp.controller('uploadController', function($scope, $http) {
+
+				$scope.uploadForm = { dir: '', name: '' }
+				$scope.file = [{name: ''}]
+
+				$scope.$watch('file[0]', function(newValue, oldValue) {
+					$scope.uploadForm.name = $scope.file[0].name
+				})
+
+				$scope.submit = function(dir, name) {
+
+					var path = dir + '/' + name
+					var reader = new FileReader()
+
+					reader.onloadend = function(e) {
+
+						var binaryData = e.target.result
+
+						hmac = CryptoJS.HmacSHA1('POST' + $scope.user.login + path, $scope.user.secret)
+
+						$http({
+							method: 'POST',
+							url: 'http://localhost:8090/storage/'.concat(path),
+							headers: {
+								'Authorization' : 'HMAC ' + $scope.user.login + ':' + hmac,
+								'Content-Type' 	: 'application/octet-stream'
+							},
+							data: binaryData
+
+						}).success(function(data, status, headers, config) {
+							// should call storageController.reload here
+							alert("OK")
+
+						}).error(function(data, status, headers, config) {
+							console.log('upload failed')
+						})
+					}
+
+					reader.readAsBinaryString($scope.file[0])
+				}
+			})
+
+			managerApp.controller('storageController', function($scope, $http) {
+
+				$scope.fileList = [ ]
+
+				$scope.reload = function() {
+
+					hmac = CryptoJS.HmacSHA1('GET' + $scope.user.login + '/', $scope.user.secret)
+
+					$http({
+						method: 'GET',
+						url: 'http://localhost:8090/storage/',
+						headers: {
+							'Authorization' : 'HMAC ' + $scope.user.login + ':' + hmac,
+						}
+
+					}).success(function(data, status, headers, config) {
+						$scope.fileList = data
+
+					}).error(function(data, status, headers, config) {
+						console.log('listing failed')
+					})
+				}
+
+				$scope.download = function(path) {
+
+					hmac = CryptoJS.HmacSHA1('GET' + $scope.user.login + path, $scope.user.secret)
+
+					$http({
+						method: 'GET',
+						url: 'http://localhost:8090/storage/' + path,
+						headers: {
+							'Authorization' : 'HMAC ' + $scope.user.login + ':' + hmac,
+						}
+
+					}).success(function(data, status, headers, config) {
+
+						var blob = new Blob([data], {type: "application/octet-stream"});
+						var objectUrl = URL.createObjectURL(blob);
+						window.open(objectUrl);
+
+					}).error(function(data, status, headers, config) {
+						console.log('download failed for ' + path)
+					})
+				}
+			})
+
+		</script>
+
+	</body>
+
+</html>
