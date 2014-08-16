@@ -63,6 +63,7 @@ send_response(Sock, {HttpStatus, ContentType, Headers, Body})
 		'Created'		-> "HTTP/1.0 201 Created";
 		'Accepted'		-> "HTTP/1.1 202 Accepted";
 		'NoContent'		-> "HTTP/1.0 204 No Content";
+		'Redirect'		-> "HTTP/1.1 302 Found";
 		'BadRequest'	-> "HTTP/1.0 400 Bad Request";
 		'Unauthorized'	-> "HTTP/1.0 401 Unauthorized";
 		'NotAllowed'	-> "HTTP/1.1 405 Method Not Allowed";
@@ -73,6 +74,7 @@ send_response(Sock, {HttpStatus, ContentType, Headers, Body})
 	Mime = case ContentType of
 		text	-> "text/plain";
 		html 	-> "text/html";
+		json 	-> "application/json";
 		file	-> "application/octet-stream";
 		_		-> "application/octet-stream"
 	end,

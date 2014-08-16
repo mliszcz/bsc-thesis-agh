@@ -86,21 +86,31 @@ handle_request(Sock) ->
 
 			case Context of
 				"storage" 		-> handle_context_storage(Method, Path, Sock);
+				"manager" 		-> handle_context_manager(Method, Path);
 				"favicon.ico" 	-> handle_other(Path);
 				_ 				-> handle_other(Path)
 			end;
 
-		[] -> handle_other("/")
+		[] -> handle_context_manager(Method, "/")
 	end,
 
 	http_utils:send_response(Sock, Response),
 	gen_tcp:close(Sock).
 
+% TODO load this only once
+handle_context_manager(Method, Path) ->
+	case Method of
+		'GET' ->
+			{ok, BinManager} = file:read_file(code:priv_dir(util:get_app())++"/manager.html"),
+			{'OK', html, [], BinManager};
+		_ -> handle_other(Path)
+	end.
+
 
 handle_context_storage(Method, Path, Sock) ->
 
 	{Headers, BinData} = http_utils:parse_request(Sock),
-
+	log:info("context storage with path '~s'", [Path]),
 	try extract_credentials(Headers) of
 		{User, Hmac} -> 
 			case Method of
@@ -144,10 +154,10 @@ handle_post(User, Path, Hmac, BinData) ->
 	end.
 
 
-handle_get(User, Path, Hmac, _BinData) when Path == "/" ->
+handle_get(User, Path, Hmac, _BinData) when Path == "" ->
 
-	case storage:list(node(), User, none_path, Hmac) of
-		{ok,	ErlList}				-> {'OK', 			file, [], util:term_to_binary_string(ErlList)};
+	case storage:list(node(), User, "/", Hmac) of
+		{ok,	ErlList}				-> {'OK', 			json, [], list_to_binary(file_list_to_json(ErlList))};
 		{error, authenticaiton_failed}	-> {'Unauthorized', text, [], << >>};
 		{error,	_}						-> {'BadRequest',	text, [], << >>}
 	end;
@@ -197,3 +207,28 @@ handle_head(User, Path, Hmac, _BinData) ->
 handle_other(_Path) ->
 	log:warn("unsupported operation requested"),
 	{'BadRequest', text, [], << >>}.
+
+
+%%
+%% THIS IS CRAP AND NEEDS REFACTORING
+%%
+
+file_list_to_json(ErlList) ->
+	MulList = [format_node_entry(N) || N <- ErlList],
+	FlatList = lists:append(MulList),
+	"[" ++ string:join(FlatList, ", ") ++ "]".
+
+format_node_entry({Node, FileList}) ->
+	N = atom_to_list(Node),
+	[ "{\"node\":\"" ++ N ++ "\"," ++ format_file_entry(F) ++ "}" || F <- FileList ].
+
+format_file_entry(#file{
+	id 			= Id, 			% list()
+	owner 		= _Owner, 		% list()
+	vpath 		= VPath,		% list()
+	bytes 		= Bytes,		% integer()
+	access_mode = _AccMod, 		% integer()
+	create_time = CreatTim		% integer()
+	}) ->
+	io_lib:format("\"id\":\"~s\",\"vpath\":\"~s\",\"bytes\":~p,\"created\":~p",
+		[Id, VPath, Bytes, CreatTim]).
