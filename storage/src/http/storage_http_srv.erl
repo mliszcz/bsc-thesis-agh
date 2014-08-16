@@ -136,64 +136,64 @@ extract_credentials(Headers) ->
 handle_post(User, Path, Hmac, BinData) ->
 
 	case storage:create(node(), User, Path, Hmac, BinData) of
-		{ok,	created}		-> {'Created',		self};
-		{error,	timeout}		-> {'NotAllowed',	self};
-		{error,	file_exists}	-> {'NotAllowed',	self};
-		{error, authenticaiton_failed}	-> {'Unauthorized', self};
-		{error,	_}				-> {'BadRequest',	self}
+		{ok,	created}				-> {'Created', 		text, [], << >>};
+		{error,	timeout}				-> {'NotAllowed',	text, [], << >>};
+		{error,	file_exists}			-> {'NotAllowed',	text, [], << >>};
+		{error, authenticaiton_failed}	-> {'Unauthorized', text, [], << >>};
+		{error,	_}						-> {'BadRequest',	text, [], << >>}
 	end.
 
 
 handle_get(User, Path, Hmac, _BinData) when Path == "/" ->
 
 	case storage:list(node(), User, none_path, Hmac) of
-		{ok,	ErlList}	-> {'OK',			util:term_to_binary_string(ErlList)};
-		{error, authenticaiton_failed}	-> {'Unauthorized', self};
-		{error,	_}			-> {'BadRequest',	self}
+		{ok,	ErlList}				-> {'OK', 			file, [], util:term_to_binary_string(ErlList)};
+		{error, authenticaiton_failed}	-> {'Unauthorized', text, [], << >>};
+		{error,	_}						-> {'BadRequest',	text, [], << >>}
 	end;
 
 
 handle_get(User, Path, Hmac, _BinData) ->
 
 	case storage:read(node(), User, Path, Hmac) of
-		{ok,	RawData}	-> {'OK',			RawData};
-		{error,	timeout}	-> {'NotFound',		self};
-		{error, not_found}	-> {'NotFound', 	self};
-		{error, authenticaiton_failed}	-> {'Unauthorized', self};
-		{error,	_}			-> {'BadRequest', 	self}
+		{ok,	RawData}				-> {'OK',			file, [], RawData};
+		{error,	timeout}				-> {'NotFound',		text, [], << >>};
+		{error, not_found}				-> {'NotFound', 	text, [], << >>};
+		{error, authenticaiton_failed}	-> {'Unauthorized', text, [], << >>};
+		{error,	_}						-> {'BadRequest', 	text, [], << >>}
 	end.
 
 
 handle_put(User, Path, Hmac, BinData) ->
 
 	case storage:update(node(), User, Path, Hmac, BinData) of
-		{ok,	_}			-> {'Accepted',		self};
-		{error, not_found}	-> {'NotFound',		self};
-		{error, authenticaiton_failed}	-> {'Unauthorized', self};
-		{error,	_}			-> {'BadRequest',	self}
+		{ok,	_}						-> {'Accepted',		text, [], << >>};
+		{error, not_found}				-> {'NotFound',		text, [], << >>};
+		{error, authenticaiton_failed}	-> {'Unauthorized', text, [], << >>};
+		{error,	_}						-> {'BadRequest',	text, [], << >>}
 	end.
 
 
 handle_delete(User, Path, Hmac, _BinData) ->
 
 	case storage:delete(node(), User, Path, Hmac) of
-		{ok,	deleted}	-> {'Accepted',		self};
-		{error,	not_found}	-> {'NotFound',		self};
-		{error, authenticaiton_failed}	-> {'Unauthorized', self};
-		{error,	_}			-> {'BadRequest',	self}
+		{ok,	deleted}				-> {'Accepted',		text, [], << >>};
+		{error,	not_found}				-> {'NotFound',		text, [], << >>};
+		{error, authenticaiton_failed}	-> {'Unauthorized', text, [], << >>};
+		{error,	_}						-> {'BadRequest',	text, [], << >>}
 	end.
 
 
 handle_head(User, Path, Hmac, _BinData) ->
 
 	case storage:find(node(), User, Path, Hmac) of
-		{ok,	Node	}	-> {'OK',			util:term_to_binary_string(Node)};
-		{error, not_found}	-> {'NotFound',		self};
-		{error, authenticaiton_failed}	-> {'Unauthorized', self};
-		{error,	_}			-> {'BadRequest',	self}
+		{ok,	Node	}				-> {'OK',			file, [], util:term_to_binary_string(Node)};
+		{error, not_found}				-> {'NotFound',		text, [], << >>};
+		{error, authenticaiton_failed}	-> {'Unauthorized', text, [], << >>};
+		{error,	_}						-> {'BadRequest',	text, [], << >>}
 	end.
 
 
 handle_other(_Path) ->
 	log:warn("unsupported operation requested"),
-	{'BadRequest', self}.
+	{'BadRequest', text, [], << >>}.

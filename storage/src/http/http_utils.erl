@@ -55,18 +55,9 @@ chunked_recv(Sock, Buffer, Size) ->
 	end.
 
 
-send_response(Sock, {HttpStatus, self}) ->
-	send_response(Sock, HttpStatus, text);
+send_response(Sock, {HttpStatus, ContentType, Headers, Body})
+	when is_atom(HttpStatus), is_atom(ContentType), is_list(Headers), is_binary(Body) ->
 
-send_response(Sock, {HttpStatus, BinData}) ->
-	send_response(Sock, HttpStatus, file, BinData).
-
-
-send_response(Sock, HttpStatus, MimeType) ->
-	send_response(Sock, HttpStatus, MimeType, << >>).
-
-
-send_response(Sock, HttpStatus, MimeType, BinData) ->
 	Resp = case HttpStatus of
 		'OK'			-> "HTTP/1.0 200 OK";
 		'Created'		-> "HTTP/1.0 201 Created";
@@ -78,18 +69,70 @@ send_response(Sock, HttpStatus, MimeType, BinData) ->
 		'NotFound'		-> "HTTP/1.0 404 Not Found";
 		'ServerError'	-> "HTTP/1.0 500 Internal Server Error"
 	end,
-	Mime = case MimeType of
+
+	Mime = case ContentType of
 		text	-> "text/plain";
+		html 	-> "text/html";
 		file	-> "application/octet-stream";
 		_		-> "application/octet-stream"
 	end,
-	ResponseBody = case BinData of
+
+	ResponseBody = case Body of
 		<< >>	-> list_to_binary(Resp);
-		_		-> BinData
+		_		-> Body
 	end,
 
-	Headers = iolist_to_binary(io_lib:fwrite(
-			"~s\r\nContent-Type: ~s; charset=UTF-8\r\nContent-Length: ~p\r\n\r\n",
-			[Resp, Mime, byte_size(ResponseBody)])),
+	Status = case Body of
+		<< >> -> io_lib:fwrite("~s\r\n~s\r\n", [Resp, build_headers("", Headers)]);
+		Body  -> io_lib:fwrite("~s\r\n~sContent-Type: ~s; charset=UTF-8\r\nContent-Length: ~p\r\n\r\n",
+			[Resp, build_headers("", Headers), Mime, byte_size(ResponseBody)])
+	end,
 
-	gen_tcp:send(Sock, << Headers/binary, ResponseBody/binary >>).
+	BinHeaders = iolist_to_binary(Status),
+
+	gen_tcp:send(Sock, << BinHeaders/binary, ResponseBody/binary >>).
+
+build_headers(Buffer, []) -> Buffer;
+build_headers(Buffer, [{H,V}|T]) ->
+	build_headers(io_lib:fwrite("~s~s: ~s\r\n", [Buffer, H, V]), T).
+
+
+% send_response(Sock, {HttpStatus, self}) ->
+% 	send_response(Sock, HttpStatus, text);
+
+% send_response(Sock, {HttpStatus, BinData}) ->
+% 	send_response(Sock, HttpStatus, file, BinData).
+
+
+% send_response(Sock, HttpStatus, MimeType) ->
+% 	send_response(Sock, HttpStatus, MimeType, << >>).
+
+
+% send_response(Sock, HttpStatus, MimeType, BinData) ->
+% 	Resp = case HttpStatus of
+% 		'OK'			-> "HTTP/1.0 200 OK";
+% 		'Created'		-> "HTTP/1.0 201 Created";
+% 		'Accepted'		-> "HTTP/1.1 202 Accepted";
+% 		'NoContent'		-> "HTTP/1.0 204 No Content";
+% 		'BadRequest'	-> "HTTP/1.0 400 Bad Request";
+% 		'Unauthorized'	-> "HTTP/1.0 401 Unauthorized";
+% 		'NotAllowed'	-> "HTTP/1.1 405 Method Not Allowed";
+% 		'NotFound'		-> "HTTP/1.0 404 Not Found";
+% 		'ServerError'	-> "HTTP/1.0 500 Internal Server Error"
+% 	end,
+% 	Mime = case MimeType of
+% 		text	-> "text/plain";
+% 		html 	-> "text/html"
+% 		file	-> "application/octet-stream";
+% 		_		-> "application/octet-stream"
+% 	end,
+% 	ResponseBody = case BinData of
+% 		<< >>	-> list_to_binary(Resp);
+% 		_		-> BinData
+% 	end,
+
+% 	Headers = iolist_to_binary(io_lib:fwrite(
+% 			"~s\r\nContent-Type: ~s; charset=UTF-8\r\nContent-Length: ~p\r\n\r\n",
+% 			[Resp, Mime, byte_size(ResponseBody)])),
+
+% 	gen_tcp:send(Sock, << Headers/binary, ResponseBody/binary >>).
