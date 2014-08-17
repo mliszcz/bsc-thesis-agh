@@ -1,3 +1,4 @@
+<!DOCTYPE html>
 
 <!--
  * manager.html
@@ -6,8 +7,6 @@
  * simple, single-page, stateless storage manager
  *
 -->
-
-<!DOCTYPE html>
 
 <html ng-app="managerApp">
 
@@ -80,19 +79,30 @@
 				<div class="panel-heading">upload file</div>
 
 
-			<form 	ng-controller="uploadController"
-						ng-submit="submit(uploadForm.dir, uploadForm.name)"
-						class="form-inline panel-body" >
+			<form novalidate name="_uploadForm"
+					ng-controller="uploadController"
+					ng-submit="submit(uploadForm.dir, uploadForm.name)"
+					class="form-inline panel-body" >
 
 				<span class="form-control" disabled>storage/</span>
 
-				<input type="text" ng-model="uploadForm.dir" class="form-control" placeholder="directory" />
-				
+				<span class="form-group"  ng-attr-class="{{_uploadForm.dir.$valid && 'has-success' || 'has-error'}}">
+				<input name="dir" type="text" ng-model="uploadForm.dir" class="form-control"
+					placeholder="directory" ng-pattern="/^(\w+/)*\w+$/" />
+				</span>
+		
 				<span class="form-control" disabled>/</span>
 				
-				<input 								type="text" 	ng-model="uploadForm.name" 	class="form-control" placeholder="filename" />
-				<input filelist-bind name="file" 	type="file" 	ng-model="fuck_u_angular"    />
-				<input 								type="submit" 	value="Upload!" 			class="btn btn-primary btn-sm" />
+				<span class="form-group" ng-attr-class="{{_uploadForm.name.$valid && 'has-success' || 'has-error'}}">
+				<input name="name" type="text" ng-model="uploadForm.name" class="form-control"
+					placeholder="filename" required ng-pattern="/^\w+(.\w+)?$/" />
+				</span>
+
+				<input filelist-bind name="files" type="file" ng-model="fuck_u_angular" required />
+
+				<input type="submit" value="Upload!" class="btn btn-primary btn-sm"
+						ng-disabled="_uploadForm.dir.$invalid || _uploadForm.name.$invalid " />
+				
 			</form>
 
 			</div>
@@ -114,7 +124,8 @@
 						<th>size [bytes]</th>
 						<th>created</th>
 					</tr>
-					<tr ng-repeat="file in fileList | orderBy:'created':true" ng-click="download(file.vpath)">
+					<tr ng-repeat="file in fileList | orderBy:'created':true" ng-click="download(file.vpath)"
+						style="cursor: pointer;">
 						<td>{{file.id}}</td>
 						<td>{{file.node}}</td>
 						<td>{{file.vpath}}</td>
@@ -170,8 +181,8 @@
 				$scope.uploadForm = { dir: '', name: '' }
 				$scope.file = [{name: ''}]
 
-				$scope.$watch('file[0]', function(newValue, oldValue) {
-					$scope.uploadForm.name = $scope.file[0].name
+				$scope.$watch('files[0]', function(newValue, oldValue) {
+					$scope.uploadForm.name = $scope.files[0].name
 				})
 
 				$scope.submit = function(dir, name) {
@@ -203,7 +214,7 @@
 						})
 					}
 
-					reader.readAsBinaryString($scope.file[0])
+					reader.readAsBinaryString($scope.files[0])
 				}
 			})
 
