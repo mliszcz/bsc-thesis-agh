@@ -84,9 +84,12 @@
 						ng-submit="submit(uploadForm.dir, uploadForm.name)"
 						class="form-inline panel-body" >
 
-				<span class="form-control">storage/</span>
-				<input 								type="text" 	ng-model="uploadForm.dir" 	class="form-control" placeholder="directory" />
-				<span class="form-control">/</span>
+				<span class="form-control" disabled>storage/</span>
+
+				<input type="text" ng-model="uploadForm.dir" class="form-control" placeholder="directory" />
+				
+				<span class="form-control" disabled>/</span>
+				
 				<input 								type="text" 	ng-model="uploadForm.name" 	class="form-control" placeholder="filename" />
 				<input filelist-bind name="file" 	type="file" 	ng-model="fuck_u_angular"    />
 				<input 								type="submit" 	value="Upload!" 			class="btn btn-primary btn-sm" />
@@ -109,12 +112,14 @@
 						<th>node</th>
 						<th>path</th>
 						<th>size [bytes]</th>
+						<th>created</th>
 					</tr>
-					<tr ng-repeat="file in fileList" ng-click="download(file.vpath)">
+					<tr ng-repeat="file in fileList | orderBy:'created':true" ng-click="download(file.vpath)">
 						<td>{{file.id}}</td>
 						<td>{{file.node}}</td>
 						<td>{{file.vpath}}</td>
 						<td>{{file.bytes}}</td>
+						<td>{{file.created | date:'medium'}}</td>
 					</tr>
 				</table>
 			</div>
@@ -190,11 +195,11 @@
 							data: binaryData
 
 						}).success(function(data, status, headers, config) {
-							// should call storageController.reload here
-							alert("OK")
+							$scope.$root.$broadcast('uploadedEvent', [])
+							// alert("uploaded successfully")
 
 						}).error(function(data, status, headers, config) {
-							console.log('upload failed')
+							alert('upload failed with error code ' + status + '\n' + data)
 						})
 					}
 
@@ -205,6 +210,8 @@
 			managerApp.controller('storageController', function($scope, $http) {
 
 				$scope.fileList = [ ]
+
+				$scope.$root.$on('uploadedEvent', function(event, args) { $scope.reload() })
 
 				$scope.reload = function() {
 
@@ -221,7 +228,7 @@
 						$scope.fileList = data
 
 					}).error(function(data, status, headers, config) {
-						console.log('listing failed')
+						alert('listing failed with error code ' + status + '\n' + data)
 					})
 				}
 
@@ -243,7 +250,7 @@
 						window.open(objectUrl);
 
 					}).error(function(data, status, headers, config) {
-						console.log('download failed for ' + path)
+						alert('download failed with error code ' + status + '\n' + data)
 					})
 				}
 			})
