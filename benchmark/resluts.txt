@@ -1,0 +1,27 @@
+
+[xx.07.2014] testy
+
+	baza erlang etd/dets
+	pliki 4K
+	logger + stdout
+	sig-10
+
+	wydajnosc 20-100 requests/s
+
+	dokladne wykresy w results.nb (mathematica)
+
+
+[18.08.2014] testy
+
+	baza in-memory
+	puste pliki, bez odczytow z dysku
+	system skompilowany bez loggera
+	i5-4200u + Plextor N3-L2128-01 + ubuntu 14.04 x64
+
+	kazdy pomiar powtorzony 2-3 razy
+
+	1 threads -> 1 nodes, 1000 requests/thread: 	  800-900 ms / 1000  requests 		~ 1200 reads/s
+	4 threads -> 1 nodes,  250 resuests/thread: 	  500-600 ms / 4*250 requests 		~ 1700 reads/s 	(taka sama sumaryczna liczba zapytan, wydajnosc 30% lepsza)
+	4 threads -> 1 nodes, 1000 requests/thread: 	2000-2500 ms / 1000  requests 		~  400 reads/s 	(4x wiecej zapytan, 3x wiekszy czas, ok)
+	1 threads -> 4 nodes, 1000 requests/thread: 	2500-3000 ms / 1000  requests 		~  400 reads/s 	(TO TRZEBA POPRAWIC, ale 4 wezly dzialaly na jednej maszynie)
+	4 threads -> 4 nodes,  250 requests/thread: 	1500-1600 ms / 4*250 requests 		~  800 reads/s 	(wieksza liczba wezlow -> wiekszy wzrost ze zrownoleglenia - 100% - 4x wiecej watkow, 2x szybciej)
