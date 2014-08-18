@@ -27,7 +27,7 @@ function create_cluster {
 	# $3 - per-handler memory limit
 
 	# dk why this is needed, cause clustertool should remove old dir
-	# rm -rf $TMP/storage_cluster 2>/dev/null
+	rm -rf $TMP/storage_cluster 2>/dev/null
 
 	cd $CWD/clustertool
 	cp make_cluster.properties make_cluster.properties.old
@@ -69,7 +69,7 @@ EOF
 
 function execute_beam {
 	cd $CWD
-	erl -sname client -pa benchmark/ebin storage/ebin -s $1 $2
+	erl -sname client -setcookie benchmark -pa benchmark/ebin storage/ebin -s $1 $2
 }
 
 _4K=$((      4 * 1024 ))
@@ -107,9 +107,10 @@ function test_cycle {
 	create_cluster $1 $5 $6
 
 	cd $TMP/storage_cluster/ && ./cluster.sh clean && cd $CWD
-	sleep 3
-	cd $TMP/storage_cluster/ && ./cluster.sh start && ./wait.sh && cd $CWD
-	sleep 3
+	sleep 2
+	# cd $TMP/storage_cluster/ && ./cluster.sh start && ./wait.sh && cd $CWD
+	cd $TMP/storage_cluster/ && ./cluster.sh start && cd $CWD
+	sleep 8
 
 	prepare_fixture $1 $2 $3 $4 true false 'create'
 	execute_beam test_base shell_create
@@ -129,6 +130,7 @@ function test_cycle {
 NODES=(1 2 5 10 20 50)
 THREADS=(1 2 5 10 20 50)
 SIZES=(_4K _512K _1M _32M _128M _512M)
+ITER_LIM=1000
 
 NODES=(1 2 3)
 THREADS=(1 2 5)
@@ -151,7 +153,7 @@ do
 			echo "running cycle: $node nodes, $size sample, $thread threads"
 
 			ITER=$(( QUOTA / ( ${!size} * thread ) ))
-			(( ITER > 20 )) && ITER=20
+			(( ITER > $ITER_LIM )) && ITER=$ITER_LIM
 			echo "$ITER iterations"
 
 			DSK_LIM=$(( QUOTA / node ))

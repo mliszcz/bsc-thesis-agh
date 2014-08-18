@@ -32,7 +32,7 @@ thread(Pid, ThreadNum, Iterations, JobFun) ->
 
 iteration(_ThreadNum, 0, _JobFun, TimeAcc) -> TimeAcc;
 iteration( ThreadNum, N,  JobFun, TimeAcc) ->
-	if ?VERBOSE -> io:format("thread ~p, iter ~p!~n", [ThreadNum, N]) end,
+	% if ?VERBOSE -> io:format("thread ~p, iter ~p!~n", [ThreadNum, N]) end,
 	{Microtime, _Value} = timer:tc(JobFun, [ThreadNum, N]),
 	iteration(ThreadNum, N-1, JobFun, TimeAcc+Microtime).
 

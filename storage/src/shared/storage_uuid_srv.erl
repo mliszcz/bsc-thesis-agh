@@ -37,7 +37,7 @@ generate() ->
 %% ------------------------------------------------------------------
 
 init(_Args) ->
-	log:info("starting uuid generator"),
+	?LOG_INFO("starting uuid generator"),
 	{ok, get_mac_address(util:get_env(uuid_interface_name))}.
 
 handle_call(generate, _From, State) ->
@@ -71,6 +71,6 @@ get_mac_address(InterfaceName)
 		list_to_binary(ListMac)
 	catch
 		_:_ ->
-			log:error("unable to get MAC address for interface ~s", [InterfaceName]),
+			?LOG_ERROR("unable to get MAC address for interface ~s", [InterfaceName]),
 			<< 0:48/integer >>
 	end.

@@ -2,6 +2,7 @@
 %% @doc Storage Server node application
 
 -module(storage_app).
+-include("shared.hrl").
 -behaviour(application).
 
 %% Application callbacks
@@ -22,6 +23,6 @@ start(_StartType, [ConfigFilePath | _OtherArgs]) ->
 	end.
 
 stop(_State) ->
-	log:info("application stopped!"),
+	?LOG_INFO("application stopped!"),
 	globals:deinit(),
 	ok.

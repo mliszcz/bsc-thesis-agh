@@ -23,11 +23,11 @@
 %% ------------------------------------------------------------------
 
 start_link() ->
-	log:info("dist starting"),
+	?LOG_INFO("dist starting"),
 	gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
 stop() ->
-	log:info("shutdown"),
+	?LOG_INFO("shutdown"),
 	gen_server:cast(?SERVER, stop).
 
 %% ------------------------------------------------------------------
@@ -41,9 +41,9 @@ init(_Args) ->
 	% globals:set(capacity, util:get_env(dist_storage_cap)),
 
 	InitialNode = list_to_atom(util:get_env(dist_initial_node)),
-	log:info("performing remote scan"),
+	?LOG_INFO("performing remote scan"),
 	RemoteNodes = remote_scan(sets:add_element(InitialNode, sets:new())),
-	log:info("remote scan done!"),
+	?LOG_INFO("remote scan done!"),
 	broadcast(RemoteNodes, ?DIST_SERVER, {hello, node()}),	% broadcast own name
 
 	{ok, RemoteNodes}.
@@ -51,7 +51,7 @@ init(_Args) ->
 
 handle_call({request, #request{type=create, path=Path}=Request},
 	From, State) ->
-	log:info("creating ~s", [Path]),
+	?LOG_INFO("creating ~s", [Path]),
 	spawn_link(
 		fun() ->
 			case gen_server:call({?AUTH_SERVER, node()}, {authenticate, Request}) of
@@ -70,7 +70,7 @@ handle_call({request, #request{type=create, path=Path}=Request},
 
 handle_call({request, #request{type=update, path=Path}=Request},
 	From, State) ->
-	log:info("updating ~s", [Path]),
+	?LOG_INFO("updating ~s", [Path]),
 	spawn_link(
 		fun() ->
 			case gen_server:call({?AUTH_SERVER, node()}, {authenticate, Request}) of
@@ -109,7 +109,7 @@ handle_call({request, #request{type=Type}=Request}, From, State)
 
 
 handle_call({request, #request{type=list}=Request}, From, State) ->
-	log:info("listing"),
+	?LOG_INFO("listing"),
 	spawn_link(
 		fun() ->
 			case gen_server:call({?AUTH_SERVER, node()}, {authenticate, Request}) of
@@ -135,7 +135,7 @@ handle_call({state_info}, _From, State) ->
 
 
 handle_cast({hello, Node}, State) ->
-	log:info("~p has joined the cluster!", [Node]),
+	?LOG_INFO("~p has joined the cluster!", [Node]),
 	{noreply, sets:add_element(Node, State)};
 
 
@@ -148,7 +148,7 @@ handle_info(_Info, State) ->
 
 
 terminate(Reason, _State) ->
-	log:info("terminating dist due to ~p", [Reason]),
+	?LOG_INFO("terminating dist due to ~p", [Reason]),
 	ok.
 
 
@@ -185,7 +185,7 @@ broadcall(RemoteNodes, Process, Message) ->
 				_:{timeout, _} -> Acc;
 				_:{{nodedown, _}, _} -> Acc;
 				Type:Error ->
-					log:error("broadcall failed on node ~p, reason: ~w:~w", [Node, Type, Error]),
+					?LOG_ERROR("broadcall failed on node ~p, reason: ~w:~w", [Node, Type, Error]),
 					Acc
 			end
 		end,

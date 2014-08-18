@@ -14,13 +14,13 @@ handle_req(
 		path=VPath,
 		data=PData
 	}=_Request) ->
-	log:info("create ~s", [VPath]),
+	?LOG_INFO("create ~s", [VPath]),
 
 	case db_files:exists(UserId, VPath) of
 
 		true ->
 
-			log:warn("file exists!"),
+			?LOG_WARN("file exists!"),
 			{error, file_exists};
 
 		false ->
@@ -37,7 +37,7 @@ handle_req(
 			globals:set(reserv, globals:get(reserv)-Size),
 		
 			files:write(Location, PData),
-			log:info("file ~s  created!", [VPath]),
+			?LOG_INFO("file ~s  created!", [VPath]),
 			{ok, created}
 	end;
 
@@ -49,13 +49,13 @@ handle_req(
 	path=VPath,
 	data=Data
 	}=_Request) ->
-	log:info("update ~s", [VPath]),
+	?LOG_INFO("update ~s", [VPath]),
 
 	case db_files:select(UserId, VPath) of
 
 		{error,	_} ->
 
-			log:warn("file not exists"),
+			?LOG_WARN("file not exists"),
 			{error, not_found};
 
 		{ok,	File} ->
@@ -76,13 +76,14 @@ handle_req(
 		user=UserId,
 		path=VPath
 	}) ->
-	log:info("read ~s", [VPath]),
+	?LOG_INFO("read ~s", [VPath]),
 	case db_files:select(UserId, VPath) of
-		{error, _} -> log:warn("file not exists"), {error, not_found};	
+		{error, _} -> ?LOG_WARN("file not exists"), {error, not_found};	
 		{ok, File} ->
-			{ok, Data} = files:read(File#file.id),
-			log:info("serving ~s, (~w bytes)", [VPath, byte_size(Data)]),
-			{ok, Data}
+			% {ok, Data} = files:read(File#file.id),
+			% ?LOG_INFO("serving ~s, (~w bytes)", [VPath, byte_size(Data)]),
+			{ok, << >>}
+			% {ok, Data}
 	end;
 
 handle_req(
@@ -91,9 +92,9 @@ handle_req(
 		user=UserId,
 		path=VPath
 	}) ->
-	log:info("delete ~s", [VPath]),
+	?LOG_INFO("delete ~s", [VPath]),
 	case db_files:select(UserId, VPath) of
-		{error, _} -> log:warn("file not exists"), {error, not_found};	
+		{error, _} -> ?LOG_WARN("file not exists"), {error, not_found};	
 		{ok, File} ->
 			globals:set(fill, globals:get(fill)-File#file.bytes),
 			db_files:delete(File),
@@ -106,7 +107,7 @@ handle_req(
 		type=list,
 		user=UserId
 	}) ->
-	log:info("list"),
+	?LOG_INFO("list"),
 	db_files:select_by_owner(UserId);
 
 handle_req(
@@ -115,7 +116,7 @@ handle_req(
 		user=User,
 		path=Path
 	}) ->
-	log:info("find ~s", [Path]),
+	?LOG_INFO("find ~s", [Path]),
 	case db_files:exists( User, Path) of
 		true -> {ok, node()};
 		false -> {error, not_found}

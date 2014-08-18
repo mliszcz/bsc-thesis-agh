@@ -25,11 +25,11 @@
 %% ------------------------------------------------------------------
 
 start_link() ->
-	log:info("auth starting"),
+	?LOG_INFO("auth starting"),
 	gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
 stop() ->
-	log:info("shutdown"),
+	?LOG_INFO("shutdown"),
 	gen_server:cast(?SERVER, stop).
 
 %% ------------------------------------------------------------------
@@ -43,13 +43,13 @@ init(_Args) ->
 
 	Cache = ets:new(users_cache, [public]),
 
-	log:info("authenticator initialized"),
+	?LOG_INFO("authenticator initialized"),
 	{ok, Cache}.
 
 
 handle_call({authenticate, #request{user=UserId, hmac=Hmac}=Request},
 	From, State) ->
-	log:info("authentication call for user ~p (id)", [UserId]),
+	?LOG_INFO("authentication call for user ~p (id)", [UserId]),
 	gen_server:reply(From, {ok, authenticated}),
 
 	% spawn_link(
@@ -84,7 +84,7 @@ handle_call({authenticate, #request{user=UserId, hmac=Hmac}=Request},
 	% 			true -> true;
 	% 			false ->
 
-	% 				log:info("user ~s not found in cache", [UserId]),
+	% 				?LOG_INFO("user ~s not found in cache", [UserId]),
 
 	% 				% ask other nodes for user identity
 	% 				case fetch_user(UserId) of
@@ -94,7 +94,7 @@ handle_call({authenticate, #request{user=UserId, hmac=Hmac}=Request},
 	% 						ets:insert(State, {UserEntity#user.name, UserEntity#user.secret,
 	% 							Now+?EXPIRATION_TIME}),
 
-	% 						log:info("calculating hmac for ~s~s = ~s", [Request#request.user, Request#request.path, calculate_hmac(Request, UserEntity#user.secret)]),
+	% 						?LOG_INFO("calculating hmac for ~s~s = ~s", [Request#request.user, Request#request.path, calculate_hmac(Request, UserEntity#user.secret)]),
 
 	% 						Hmac == calculate_hmac(Request, UserEntity#user.secret);
 
@@ -105,10 +105,10 @@ handle_call({authenticate, #request{user=UserId, hmac=Hmac}=Request},
 
 	% 		case AcceptedL2 of
 	% 			true ->
-	% 				log:info("user ~s authenticated", [UserId]),
+	% 				?LOG_INFO("user ~s authenticated", [UserId]),
 	% 				gen_server:reply(From, {ok, authenticated});
 	% 			false ->
-	% 				log:warn("authentication failed for user ~s", [UserId]),
+	% 				?LOG_WARN("authentication failed for user ~s", [UserId]),
 	% 				gen_server:reply(From, {error, authentication_failed})
 	% 		end
 
@@ -130,7 +130,7 @@ handle_cast({{identity, UserId}, ReplyTo}, State) ->
 
 
 handle_cast(_Message, State) ->
-	log:warn("unsupported cast"),
+	?LOG_WARN("unsupported cast"),
 	{noreply, State}.
 
 
@@ -139,7 +139,7 @@ handle_info(_Info, State) ->
 
 
 terminate(_Reason, _State) ->
-	log:info("closing"),
+	?LOG_INFO("closing"),
 	ok.
 
 

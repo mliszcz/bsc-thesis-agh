@@ -41,6 +41,7 @@ backtrace(Nth) ->
 	end.
 
 log_stdout(Level, Msg, Data) ->
+	% pass.
 	case should_log(Level) of
 		true ->
 			{_, {H,M,S}} = erlang:localtime(),

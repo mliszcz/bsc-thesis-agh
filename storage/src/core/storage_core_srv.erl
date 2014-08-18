@@ -26,11 +26,11 @@
 
 start_link() ->
 	util:set_env(core_node_dir, filename:join([util:get_env(core_work_dir), atom_to_list(node())])),
-	log:info("starting"), 
+	?LOG_INFO("starting"), 
 	gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
 stop() ->
-	log:info("shutdown"),
+	?LOG_INFO("shutdown"),
 	gen_server:cast(?SERVER, stop).
 
 %% ------------------------------------------------------------------
@@ -56,7 +56,7 @@ init(_Args) ->
 	globals:set(fill, Fill),
 	globals:set(reserv, 0),
 
-	log:info("node ~s, fill ~w/~w with ~w files",
+	?LOG_INFO("node ~s, fill ~w/~w with ~w files",
 		[node(), Fill, Quota, 0]),
 
 	{ok, {Fill, Quota}}.
@@ -66,12 +66,12 @@ handle_call({{request,
 		type=list
 		}=Request}, _ReplyTo}, From, {_Fill, _Quota}=State) ->
 
-	log:info("core list"),
+	?LOG_INFO("core list"),
 	executor:push(From, Request),
 	{noreply, State};
 
 handle_call({reserve, HowMuch}, _From, State) ->
-	log:info("reserving ~p B", [HowMuch]),
+	?LOG_INFO("reserving ~p B", [HowMuch]),
 	Fill = globals:get(fill),
 	Reserv = globals:get(reserv),
 	Quota = util:get_env(core_storage_quota),
@@ -82,11 +82,11 @@ handle_call({reserve, HowMuch}, _From, State) ->
 		_	->
 			{error, storage_full}
 	end,
-	log:info("reserved"),
+	?LOG_INFO("reserved"),
 	{reply, Result, State}.
 
 handle_cast({release, HowMuch}, State) ->
-	log:info("releasing ~p B", [HowMuch]),
+	?LOG_INFO("releasing ~p B", [HowMuch]),
 	globals:set(reserv, globals:get(reserv)-HowMuch),
 	{noreply, State};
 
@@ -110,12 +110,12 @@ handle_cast({{request,
 		user=_User
 		}=Request}, ReplyTo}, {_Fill, _Quota}=State) ->
 
-	log:info("requested ~s", [Path]),
+	?LOG_INFO("requested ~s", [Path]),
 
 	%% TODO consider this
 	% NewState = case {Type, metadata:get(User, Path)} of
 	% 	{create,	{ok,	_}			} ->
-	% 										log:warn("file exists!")
+	% 										?LOG_WARN("file exists!")
 	% 										gen_server:reply(ReplyTo, {error, file_exists});
 	% 	{create,	{error,	not_found}	} ->
 	% 										executor:push(ReplyTo, Request),
@@ -130,7 +130,7 @@ handle_cast({{request,
 	{noreply, State};
 
 handle_cast(stop, State) ->
-	log:info("shutdown"),
+	?LOG_INFO("shutdown"),
 	ets:delete(?EXECUTORS),
 	db_files:deinit(),
 	{stop, normal, State}.
@@ -139,7 +139,7 @@ handle_info(_Info, State) ->
 	{noreply, State}.
 
 terminate(_Reason, _State) ->
-	log:info("closing"),
+	?LOG_INFO("closing"),
 	ets:delete(?EXECUTORS),
 	db_files:deinit(),
 	ok.

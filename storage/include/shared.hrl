@@ -12,6 +12,23 @@
 -define(HTTP_SERVER, storage_http_srv).
 
 
+-ifdef(log).
+-define(LOG_INFO(M), 		log:info(M)).
+-define(LOG_INFO(M, D), 	log:info(M, D)).
+-define(LOG_WARN(M), 		log:warn(M)).
+-define(LOG_WARN(M, D), 	log:warn(M, D)).
+-define(LOG_ERROR(M), 		log:error(M)).
+-define(LOG_ERROR(M, D), 	log:error(M, D)).
+-else.
+-define(LOG_INFO(M), 		true).
+-define(LOG_INFO(M, D), 	true).
+-define(LOG_WARN(M), 		true).
+-define(LOG_WARN(M, D), 	true).
+-define(LOG_ERROR(M), 		true).
+-define(LOG_ERROR(M, D), 	true).
+-endif.
+
+
 -record(file, {
 	id, 			% list()
 	owner, 			% list()

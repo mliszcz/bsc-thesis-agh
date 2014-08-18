@@ -24,9 +24,9 @@ start_link() ->
 %% this should be stopped by application master automatically
 
 % stop() ->
-% 	log:info("termintating itself!"),
-% 	% log:info("children ~p", [supervisor:which_children(whereis(?MODULE))] ),
-% 	log:info("terminated"),
+% 	?LOG_INFO("termintating itself!"),
+% 	% ?LOG_INFO("children ~p", [supervisor:which_children(whereis(?MODULE))] ),
+% 	?LOG_INFO("terminated"),
 % 	% exit(whereis(?MODULE), kill),
 % 	% gen_server:cast(storage_http_srv, stop).
 % 	% io:format("terminated~n", []),

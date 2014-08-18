@@ -26,7 +26,7 @@ start_link() ->
 	gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
 stop() ->
-	log:info("shutdown"),
+	?LOG_INFO("shutdown"),
 	gen_server:cast(?SERVER, stop).	%% @FIXME this is never called
 
 %% ------------------------------------------------------------------
@@ -34,7 +34,7 @@ stop() ->
 %% ------------------------------------------------------------------
 
 init(_Args) ->
-	log:info("starting http listener"),
+	?LOG_INFO("starting http listener"),
 	{ok, ListenSock} = gen_tcp:listen(
 		util:get_env(http_port),
 		[binary, {active, false}, {packet, http}, {reuseaddr, true}]),
@@ -45,7 +45,7 @@ handle_call(_Request, _From, State) ->
 	{reply, ok, State}.
 
 handle_cast(stop, State) ->
-	log:info("stopping"),
+	?LOG_INFO("stopping"),
 	gen_tcp:close(State),
 	{stop, normal, State}.
 
@@ -53,7 +53,7 @@ handle_info(_Info, State) ->
 	{noreply, State}.
 
 terminate(_Reason, State) ->
-	log:info("closing"),
+	?LOG_INFO("closing"),
 	gen_tcp:close(State),
 	ok.
 
@@ -68,7 +68,7 @@ code_change(_OldVsn, State, _Extra) ->
 listen(ListenSock) ->
 	case gen_tcp:accept(ListenSock) of
 		{ok, Sock} -> spawn(?MODULE, handle_request, [Sock]), listen(ListenSock);
-		{error, _} -> log:error("tcp accept failed")
+		{error, _} -> ?LOG_ERROR("tcp accept failed")
 	end.	
 
 
@@ -82,7 +82,7 @@ handle_request(Sock) ->
 
 			Path = string:join(Elements, "/"),
 
-			log:info("accepted ~p from ~s (~s)", [Method, http_utils:hostaddr(Sock), FullPath]),
+			?LOG_INFO("accepted ~p from ~s (~s)", [Method, http_utils:hostaddr(Sock), FullPath]),
 
 			case Context of
 				"storage" 		-> handle_context_storage(Method, Path, Sock);
@@ -110,7 +110,7 @@ handle_context_manager(Method, Path) ->
 handle_context_storage(Method, Path, Sock) ->
 
 	{Headers, BinData} = http_utils:parse_request(Sock),
-	log:info("context storage with path '~s'", [Path]),
+	?LOG_INFO("context storage with path '~s'", [Path]),
 	try extract_credentials(Headers) of
 		{User, Hmac} -> 
 			case Method of
@@ -205,7 +205,7 @@ handle_head(User, Path, Hmac, _BinData) ->
 
 
 handle_other(_Path) ->
-	log:warn("unsupported operation requested"),
+	?LOG_WARN("unsupported operation requested"),
 	{'BadRequest', text, [], << >>}.
 
 
