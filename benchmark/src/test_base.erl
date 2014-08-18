@@ -10,7 +10,8 @@
 	test_update/0,
 	shell_create/0,
 	shell_read/0,
-	shell_update/0
+	shell_update/0,
+	shell_cycle/0
 	]).
 
 %% ===================================================================
@@ -73,7 +74,7 @@ teardown_pass(_) ->
 test_create() ->
 
 	ActionFun = fun({Node, Binary}, T, N) ->
-		case storage:create(Node, integer_to_list(T)++"-"++integer_to_list(N), Binary) of
+		case storage:create(Node, "test", integer_to_list(T)++"-"++integer_to_list(N), "hmac", Binary) of
 			{ok, created}	-> pass;
 			Other			-> io:format("create: ~p~n", [Other])
 		end
@@ -91,7 +92,7 @@ test_read() ->
 	end,
 
 	ActionFun = fun(Node, T, N) ->
-		case storage:read(Node, integer_to_list(T)++"-"++integer_to_list(N)) of
+		case storage:read(Node, "test", integer_to_list(T)++"-"++integer_to_list(N), "hmac") of
 			{ok, _}	-> pass;
 			Other	-> io:format("read: ~p~n", [Other])
 		end
@@ -104,7 +105,7 @@ test_read() ->
 test_update() ->
 
 	ActionFun = fun({Node, Binary}, T, N) ->
-		case storage:update(Node, integer_to_list(T)++"-"++integer_to_list(N), Binary) of
+		case storage:update(Node, "test", integer_to_list(T)++"-"++integer_to_list(N), "hmac", Binary) of
 			{ok, updated}	-> pass;
 			Other			-> io:format("update: ~p~n", [Other])
 		end
@@ -123,3 +124,8 @@ shell_exec(Fun) -> Fun(), shell_default:q().
 shell_create() -> shell_exec(fun test_create/0). 
 shell_read() -> shell_exec(fun test_read/0). 
 shell_update() -> shell_exec(fun test_update/0). 
+shell_cycle() ->
+	test_create(),
+	test_read(),
+	test_update(),
+	shell_default:q().

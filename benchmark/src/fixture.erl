@@ -30,32 +30,32 @@ setup() ->
 	TempFile = "/tmp/storage_benchmark_test_file",
 	os:cmd(io_lib:format("openssl rand -out ~s $(( ~p ))", [TempFile, config(file_size, Config)])),
 
-	context_run(config(cluster, Config), fun() ->
-		Clustertool = "./cluster.sh ",
-		os:cmd(Clustertool++" stop"),
-		case config(setup_clean, Config) of
-			true  -> os:cmd(Clustertool++" clean");
-			false -> pass
-		end,
-		os:cmd(Clustertool++" start"),
+	% context_run(config(cluster, Config), fun() ->
+	% 	Clustertool = "./cluster.sh ",
+	% 	os:cmd(Clustertool++" stop"),
+	% 	case config(setup_clean, Config) of
+	% 		true  -> os:cmd(Clustertool++" clean");
+	% 		false -> pass
+	% 	end,
+	% 	os:cmd(Clustertool++" start"),
 
-		% wait for the cluster to fully configure itself
-		timer:sleep(config(start_delay, Config)),
-		os:cmd("./wait.sh")
-	end),
+	% 	% wait for the cluster to fully configure itself
+	% 	timer:sleep(config(start_delay, Config)),
+	% 	os:cmd("./wait.sh")
+	% end),
 
 	dict:append(file_name, TempFile, Config).
 
 
 teardown(Config) ->
 
-	context_run(config(cluster, Config), fun() ->
-		Clustertool = "./cluster.sh",
-		os:cmd(Clustertool++" stop"),
-		case config(teardown_clean, Config) of
-			true  -> os:cmd(Clustertool++" clean");
-			false -> pass
-		end
-	end),
+	% context_run(config(cluster, Config), fun() ->
+	% 	Clustertool = "./cluster.sh",
+	% 	os:cmd(Clustertool++" stop"),
+	% 	case config(teardown_clean, Config) of
+	% 		true  -> os:cmd(Clustertool++" clean");
+	% 		false -> pass
+	% 	end
+	% end),
 
 	ok.

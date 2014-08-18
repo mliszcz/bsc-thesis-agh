@@ -50,68 +50,69 @@ init(_Args) ->
 handle_call({authenticate, #request{user=UserId, hmac=Hmac}=Request},
 	From, State) ->
 	log:info("authentication call for user ~p (id)", [UserId]),
+	gen_server:reply(From, {ok, authenticated}),
 
-	spawn_link(
-		fun() ->
+	% spawn_link(
+	% 	fun() ->
 
-			% look in cache
-			Now = util:timestamp(),
+	% 		% look in cache
+	% 		Now = util:timestamp(),
 
-			AcceptedL1 = case ets:lookup(State, UserId) of
+	% 		AcceptedL1 = case ets:lookup(State, UserId) of
 
-				% entry exists in cache and is valid
-				[{UserId, Secret, Expires}] when Expires > Now ->
+	% 			% entry exists in cache and is valid
+	% 			[{UserId, Secret, Expires}] when Expires > Now ->
 
-					% try to validate request with cached secret
-					case Hmac == calculate_hmac(Request, Secret) of
+	% 				% try to validate request with cached secret
+	% 				case Hmac == calculate_hmac(Request, Secret) of
 
-						% everything ok, renew entry
-						true ->
-							ets:insert(State, {UserId, Secret, Now+?EXPIRATION_TIME}),
-							true;
+	% 					% everything ok, renew entry
+	% 					true ->
+	% 						ets:insert(State, {UserId, Secret, Now+?EXPIRATION_TIME}),
+	% 						true;
 
-						% invalid secret or changed from last caching
-						_ ->
-							false
-					end;
+	% 					% invalid secret or changed from last caching
+	% 					_ ->
+	% 						false
+	% 				end;
 
-				% no entry or is expired
-				_ -> false
-			end,
+	% 			% no entry or is expired
+	% 			_ -> false
+	% 		end,
 
-			AcceptedL2 = case AcceptedL1 of
-				true -> true;
-				false ->
+	% 		AcceptedL2 = case AcceptedL1 of
+	% 			true -> true;
+	% 			false ->
 
-					log:info("user ~s not found in cache", [UserId]),
+	% 				log:info("user ~s not found in cache", [UserId]),
 
-					% ask other nodes for user identity
-					case fetch_user(UserId) of
+	% 				% ask other nodes for user identity
+	% 				case fetch_user(UserId) of
 
-						% obtained secret is valid, update cache and test hmac
-						{ok, UserEntity} ->
-							ets:insert(State, {UserEntity#user.name, UserEntity#user.secret,
-								Now+?EXPIRATION_TIME}),
+	% 					% obtained secret is valid, update cache and test hmac
+	% 					{ok, UserEntity} ->
+	% 						ets:insert(State, {UserEntity#user.name, UserEntity#user.secret,
+	% 							Now+?EXPIRATION_TIME}),
 
-							log:info("calculating hmac for ~s~s = ~s", [Request#request.user, Request#request.path, calculate_hmac(Request, UserEntity#user.secret)]),
+	% 						log:info("calculating hmac for ~s~s = ~s", [Request#request.user, Request#request.path, calculate_hmac(Request, UserEntity#user.secret)]),
 
-							Hmac == calculate_hmac(Request, UserEntity#user.secret);
+	% 						Hmac == calculate_hmac(Request, UserEntity#user.secret);
 
-						% dafuq are u?
-						{error, _} -> false
-					end
-			end,
+	% 					% dafuq are u?
+	% 					{error, _} -> false
+	% 				end
+	% 		end,
 
-			case AcceptedL2 of
-				true ->
-					log:info("user ~s authenticated", [UserId]),
-					gen_server:reply(From, {ok, authenticated});
-				false ->
-					log:warn("authentication failed for user ~s", [UserId]),
-					gen_server:reply(From, {error, authentication_failed})
-			end
+	% 		case AcceptedL2 of
+	% 			true ->
+	% 				log:info("user ~s authenticated", [UserId]),
+	% 				gen_server:reply(From, {ok, authenticated});
+	% 			false ->
+	% 				log:warn("authentication failed for user ~s", [UserId]),
+	% 				gen_server:reply(From, {error, authentication_failed})
+	% 		end
 
-		end),
+	% 	end),
 	{noreply, State};
 
 

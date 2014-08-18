@@ -26,6 +26,9 @@ function create_cluster {
 	# $2 - storage space limit
 	# $3 - per-handler memory limit
 
+	# dk why this is needed, cause clustertool should remove old dir
+	# rm -rf $TMP/storage_cluster 2>/dev/null
+
 	cd $CWD/clustertool
 	cp make_cluster.properties make_cluster.properties.old
 	echo "NODES=$1" >> make_cluster.properties
@@ -66,7 +69,7 @@ EOF
 
 function execute_beam {
 	cd $CWD
-	erl -sname client -pa tests/ebin storage/ebin -s $1 $2
+	erl -sname client -pa benchmark/ebin storage/ebin -s $1 $2
 }
 
 _4K=$((      4 * 1024 ))
@@ -103,6 +106,11 @@ function test_cycle {
 
 	create_cluster $1 $5 $6
 
+	cd $TMP/storage_cluster/ && ./cluster.sh clean && cd $CWD
+	sleep 3
+	cd $TMP/storage_cluster/ && ./cluster.sh start && ./wait.sh && cd $CWD
+	sleep 3
+
 	prepare_fixture $1 $2 $3 $4 true false 'create'
 	execute_beam test_base shell_create
 
@@ -111,6 +119,9 @@ function test_cycle {
 
 	prepare_fixture $1 $2 $3 $4 false true 'update'
 	execute_beam test_base shell_update
+
+	cd $TMP/storage_cluster/ && ./cluster.sh stop && cd $CWD
+	cd $TMP/storage_cluster/ && ./cluster.sh clean && cd $CWD
 }
 
 
@@ -123,9 +134,9 @@ NODES=(1 2 3)
 THREADS=(1 2 5)
 SIZES=(_512K _32M)
 
-NODES=(5)
-THREADS=(5)
-SIZES=(_512K)
+NODES=(1)
+THREADS=(1)
+SIZES=(_4K)
 
 QUOTA=$(( 250 * 1024 * 1024 * 1024 ))	# 250 GB, max available disk space
 MEMORY=$(( 5  * 1024 * 1024 * 1024 ))	# 5 GB, max available memory
