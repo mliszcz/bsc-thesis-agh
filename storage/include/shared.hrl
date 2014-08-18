@@ -36,6 +36,13 @@
 -endif.
 
 
+-ifdef(nopersistentdb).
+-define(SQLITE3_CONNECT(DB, F), sqlite3:open(DB, [in_memory])).
+-else.
+-define(SQLITE3_CONNECT(DB, F), sqlite3:open(DB, [{file, F}])).
+-endif.
+
+
 -record(file, {
 	id, 			% list()
 	owner, 			% list()

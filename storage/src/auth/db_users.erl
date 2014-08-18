@@ -23,8 +23,7 @@
 
 init(DatabaseLocation) ->
 
-	% {ok, _Pid} = sqlite3:open(?DBNAME, [{file, DatabaseLocation}]),
-	{ok, _Pid} = sqlite3:open(?DBNAME, [in_memory]),
+	{ok, _Pid} = ?SQLITE3_CONNECT(?DBNAME, DatabaseLocation),
 
 	sqlite3:sql_exec_script(?DBNAME,
 		"CREATE TABLE IF NOT EXISTS users (

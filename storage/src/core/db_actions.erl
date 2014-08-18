@@ -11,20 +11,21 @@
 %% ====================================================================
 -export([init/1,
 		 deinit/0,
-		 create/1
+		 create/1,
+		 store/1
 		]).
 
 init(DatabaseLocation) ->
 
-	{ok, _Pid} = sqlite3:open(?DBNAME, [{file, DatabaseLocation}]),
+	{ok, _Pid} = ?SQLITE3_CONNECT(?DBNAME, DatabaseLocation),
 
-	sqlite3:sql_exec_script(?DBNAME,
+	Result = sqlite3:sql_exec_script(?DBNAME,
 		"CREATE TABLE IF NOT EXISTS actions (
 			id 				TEXT 		NOT NULL PRIMARY KEY,
 			user_id 		TEXT 		NOT NULL,
 			file_id 		TEXT 		NOT NULL,
 			action_time 	INTEGER 	NOT NULL,
-			action_type 	TEXT 		NOT NULL,
+			action_type 	TEXT 		NOT NULL
 		);").
 
 
@@ -36,7 +37,7 @@ create(#action{} = Entity) ->
 
 	NewEntity = Entity#action {id = ?UUID_SERVER:generate()},
 
-	sqlite3:sql_exec(?DBNAME,
+	Result = sqlite3:sql_exec(?DBNAME,
 		"INSERT INTO actions (id, user_id, file_id, action_time, action_type)
 					VALUES (:uuid, :u_id, :f_id, :time, :type);", [
 						{':uuid',  NewEntity#action.id},
@@ -48,6 +49,19 @@ create(#action{} = Entity) ->
 
 	{ok, NewEntity}.
 
+
+store(#request{type=Type, user=User, path=Path} = Request) ->
+	case db_files:select(User, Path) of
+		{ok, File} ->
+			create(#action{
+				user_id = User,
+				file_id = File#file.id,
+				action_time = util:timestamp(),
+				action_type = atom_to_list(Type)
+				});
+		_ ->
+			pass
+	end.
 
 %% ====================================================================
 %% Internal functions

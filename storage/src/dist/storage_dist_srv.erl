@@ -55,7 +55,6 @@ handle_call({request, #request{type=create, path=Path}=Request},
 	spawn_link(
 		fun() ->
 			case ?AUTH_CALL(node(), Request) of
-			% case gen_server:call({?AUTH_SERVER, node()}, {authenticate, Request}) of
 				{error, _} -> gen_server:reply(From, {error, authenticaiton_failed});
 				{ok, 	_} ->
 					Size = byte_size(Request#request.data),
@@ -75,7 +74,6 @@ handle_call({request, #request{type=update, path=Path}=Request},
 	spawn_link(
 		fun() ->
 			case ?AUTH_CALL(node(), Request) of
-			% case gen_server:call({?AUTH_SERVER, node()}, {authenticate, Request}) of
 				{error, _} -> gen_server:reply(From, {error, authenticaiton_failed});
 				{ok, 	_} ->
 					% prepare find request to locate node where file is kept
@@ -103,7 +101,6 @@ handle_call({request, #request{type=Type}=Request}, From, State)
 	spawn_link(
 		fun() ->
 			case ?AUTH_CALL(node(), Request) of
-			% case gen_server:call({?AUTH_SERVER, node()}, {authenticate, Request}) of
 				{error, _} -> gen_server:reply(From, {error, authenticaiton_failed});
 				{ok, 	_} -> broadcast(State, ?CORE_SERVER, {{request, Request}, From})
 			end
@@ -116,7 +113,6 @@ handle_call({request, #request{type=list}=Request}, From, State) ->
 	spawn_link(
 		fun() ->
 			case ?AUTH_CALL(node(), Request) of
-			% case gen_server:call({?AUTH_SERVER, node()}, {authenticate, Request}) of
 				{error, _} -> gen_server:reply(From, {error, authenticaiton_failed});
 				{ok,	_} ->
 					List = broadcall(State, ?CORE_SERVER, {{request, Request}, From}),

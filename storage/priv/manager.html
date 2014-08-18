@@ -187,7 +187,7 @@
 
 				$scope.submit = function(dir, name) {
 
-					var path = dir + '/' + name
+					var path = (dir) ? (dir + '/' + name) : name
 					var reader = new FileReader()
 
 					reader.onloadend = function(e) {

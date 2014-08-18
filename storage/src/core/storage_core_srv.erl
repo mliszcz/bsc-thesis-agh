@@ -46,6 +46,9 @@ init(_Args) ->
 	filelib:ensure_dir(files:resolve_name("files.db")),
 	db_files:init(files:resolve_name("files.db")),
 
+	filelib:ensure_dir(files:resolve_name("actions.db")),
+	db_actions:init(files:resolve_name("actions.db")),
+
 	Fill = case db_files:calculate_total_size() of
 		Size when is_integer(Size) -> Size;
 		null -> 0
@@ -133,6 +136,7 @@ handle_cast(stop, State) ->
 	?LOG_INFO("shutdown"),
 	ets:delete(?EXECUTORS),
 	db_files:deinit(),
+	db_actions:deinit(),
 	{stop, normal, State}.
 
 handle_info(_Info, State) ->
@@ -142,6 +146,7 @@ terminate(_Reason, _State) ->
 	?LOG_INFO("closing"),
 	ets:delete(?EXECUTORS),
 	db_files:deinit(),
+	db_actions:deinit(),
 	ok.
 
 code_change(_OldVsn, State, _Extra) ->
