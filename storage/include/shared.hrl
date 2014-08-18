@@ -12,20 +12,27 @@
 -define(HTTP_SERVER, storage_http_srv).
 
 
--ifdef(log).
--define(LOG_INFO(M), 		log:info(M)).
--define(LOG_INFO(M, D), 	log:info(M, D)).
--define(LOG_WARN(M), 		log:warn(M)).
--define(LOG_WARN(M, D), 	log:warn(M, D)).
--define(LOG_ERROR(M), 		log:error(M)).
--define(LOG_ERROR(M, D), 	log:error(M, D)).
--else.
+-ifdef(nolog).
 -define(LOG_INFO(M), 		true).
 -define(LOG_INFO(M, D), 	true).
 -define(LOG_WARN(M), 		true).
 -define(LOG_WARN(M, D), 	true).
 -define(LOG_ERROR(M), 		true).
 -define(LOG_ERROR(M, D), 	true).
+-else.
+-define(LOG_INFO(M), 		log:info(M)).
+-define(LOG_INFO(M, D), 	log:info(M, D)).
+-define(LOG_WARN(M), 		log:warn(M)).
+-define(LOG_WARN(M, D), 	log:warn(M, D)).
+-define(LOG_ERROR(M), 		log:error(M)).
+-define(LOG_ERROR(M, D), 	log:error(M, D)).
+-endif.
+
+
+-ifdef(noauth).
+-define(AUTH_CALL(N, R), {ok, authenticated}).
+-else.
+-define(AUTH_CALL(N, R), gen_server:call({?AUTH_SERVER, N}, {authenticate, R})).
 -endif.
 
 

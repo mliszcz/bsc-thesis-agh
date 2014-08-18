@@ -80,10 +80,9 @@ handle_req(
 	case db_files:select(UserId, VPath) of
 		{error, _} -> ?LOG_WARN("file not exists"), {error, not_found};	
 		{ok, File} ->
-			% {ok, Data} = files:read(File#file.id),
-			% ?LOG_INFO("serving ~s, (~w bytes)", [VPath, byte_size(Data)]),
-			{ok, << >>}
-			% {ok, Data}
+			{ok, Data} = files:read(File#file.id),
+			?LOG_INFO("serving ~s, (~w bytes)", [VPath, byte_size(Data)]),
+			{ok, Data}
 	end;
 
 handle_req(
