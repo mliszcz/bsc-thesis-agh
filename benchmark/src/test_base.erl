@@ -27,14 +27,24 @@ run(Threads, Iterations, JobFun) ->
 	lists:foreach(fun(Num)-> spawn(fun() -> thread(SuperPid, Num, Iterations, JobFun) end) end, lists:seq(1, Threads)),
 	lists:map(fun(_)-> receive Res -> Res end end, lists:seq(1, Threads)).
 
-thread(Pid, ThreadNum, Iterations, JobFun) ->
-	Pid ! iteration(ThreadNum, Iterations, JobFun, 0).
 
+thread(Pid, ThreadNum, Iterations, JobFun) ->
+	% Pid ! iteration(ThreadNum, Iterations, JobFun, 0).
+	{Microtime, _} = timer:tc(fun iteration/3, [ThreadNum, Iterations, JobFun]),
+	Pid ! Microtime.
+
+
+% slower test, adds time every call
 iteration(_ThreadNum, 0, _JobFun, TimeAcc) -> TimeAcc;
 iteration( ThreadNum, N,  JobFun, TimeAcc) ->
 	% if ?VERBOSE -> io:format("thread ~p, iter ~p!~n", [ThreadNum, N]) end,
 	{Microtime, _Value} = timer:tc(JobFun, [ThreadNum, N]),
 	iteration(ThreadNum, N-1, JobFun, TimeAcc+Microtime).
+
+% better test, faster and more accurate, calls timer:tc only once
+iteration(_ThreadNum, 0, _JobFun) -> ok;
+iteration( ThreadNum, N,  JobFun) -> JobFun(ThreadNum, N), iteration(ThreadNum, N-1, JobFun).
+
 
 % base test case
 % SetupFun		- called with fixture in argument
