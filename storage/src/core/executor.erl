@@ -27,11 +27,7 @@ run(Name, MemoryLimit) ->
 
 			?LOG_ACTION(Request),
 
-			MemoryCurr = erlang:memory(binary),
-			if	(Type == create orelse Type == update) andalso MemoryCurr > MemoryLimit ->
-					erlang:garbage_collect(self());
-				true -> pass
-			end,
+			erlang:garbage_collect(self()),
 
 			run(Name, MemoryLimit)
 
