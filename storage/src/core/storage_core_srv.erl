@@ -42,6 +42,14 @@ init(_Args) ->
 	process_flag(trap_exit, true),	% this is left for the sake of example and will be removed
 
 	ets:new(?EXECUTORS, [named_table, public, {heir, whereis(init), nothing} ]),
+	% register(single_executor, spawn(fun() -> executor:run("executor", 0) end)),
+
+	Execs = [
+		 spawn(fun() -> executor:run("executor1", 0) end),
+		 spawn(fun() -> executor:run("executor2", 0) end),
+		 spawn(fun() -> executor:run("executor3", 0) end),
+		 spawn(fun() -> executor:run("executor4", 0) end)
+	],
 
 	filelib:ensure_dir(files:resolve_name("files.db")),
 	db_files:init(files:resolve_name("files.db")),
@@ -62,12 +70,12 @@ init(_Args) ->
 	?LOG_INFO("node ~s, fill ~w/~w with ~w files",
 		[node(), Fill, Quota, 0]),
 
-	{ok, {Fill, Quota}}.
+	{ok, {Fill, Quota, {Execs, 1}}}.
 
 handle_call({{request,
 	#request{
 		type=list
-		}=Request}, _ReplyTo}, From, {_Fill, _Quota}=State) ->
+		}=Request}, _ReplyTo}, From, {_Fill, _Quota, _}=State) ->
 
 	?LOG_INFO("core list"),
 	executor:push(From, Request),
@@ -111,7 +119,7 @@ handle_cast({{request,
 		type=_Type,
 		path=Path,
 		user=_User
-		}=Request}, ReplyTo}, {_Fill, _Quota}=State) ->
+		}=Request}, ReplyTo}, {_Fill, _Quota, {Exec, Next}}=State) ->
 
 	?LOG_INFO("requested ~s", [Path]),
 
@@ -128,9 +136,12 @@ handle_cast({{request,
 	% 										{Fill, Quota}
 	% end,
 
-	executor:push(ReplyTo, Request),
+	% single_executor ! {ReplyTo, Request},
+	% executor:push(ReplyTo, Request),
 
-	{noreply, State};
+	lists:nth(Next, Exec) ! {ReplyTo, Request},
+
+	{noreply, {_Fill, _Quota, {Exec,(Next rem 4)+1}}};
 
 handle_cast(stop, State) ->
 	?LOG_INFO("shutdown"),

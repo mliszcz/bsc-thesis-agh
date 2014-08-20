@@ -8,6 +8,8 @@
 
 -export([ push/2 ]).
 
+-export([ run/2 ]).
+
 
 -ifdef(notrack).
 -define(LOG_ACTION(X), true).
