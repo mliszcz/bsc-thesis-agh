@@ -44,12 +44,13 @@ init(_Args) ->
 	ets:new(?EXECUTORS, [named_table, public, {heir, whereis(init), nothing} ]),
 	% register(single_executor, spawn(fun() -> executor:run("executor", 0) end)),
 
-	Execs = [
-		 spawn(fun() -> executor:run("executor1", 0) end),
-		 spawn(fun() -> executor:run("executor2", 0) end),
-		 spawn(fun() -> executor:run("executor3", 0) end),
-		 spawn(fun() -> executor:run("executor4", 0) end)
-	],
+	Execs = [],
+	% Execs = [
+	% 	 spawn(fun() -> executor:run("executor1", 0) end),
+	% 	 spawn(fun() -> executor:run("executor2", 0) end),
+	% 	 spawn(fun() -> executor:run("executor3", 0) end),
+	% 	 spawn(fun() -> executor:run("executor4", 0) end)
+	% ],
 
 	filelib:ensure_dir(files:resolve_name("files.db")),
 	db_files:init(files:resolve_name("files.db")),
@@ -137,11 +138,13 @@ handle_cast({{request,
 	% end,
 
 	% single_executor ! {ReplyTo, Request},
-	% executor:push(ReplyTo, Request),
+	executor:push(ReplyTo, Request),
 
-	lists:nth(Next, Exec) ! {ReplyTo, Request},
+	% lists:nth(Next, Exec) ! {ReplyTo, Request},
 
-	{noreply, {_Fill, _Quota, {Exec,(Next rem 4)+1}}};
+	{noreply, State};
+	% {noreply, {_Fill, _Quota, {Exec,(Next rem 4)+1}}};
+
 
 handle_cast(stop, State) ->
 	?LOG_INFO("shutdown"),
