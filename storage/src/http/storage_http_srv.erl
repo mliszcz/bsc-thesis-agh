@@ -112,7 +112,8 @@ handle_context_storage(Method, Path, Sock) ->
 	{Headers, BinData} = http_utils:parse_request(Sock),
 	?LOG_INFO("context storage with path '~s'", [Path]),
 	try extract_credentials(Headers) of
-		{User, Hmac} -> 
+		{User, HmacStr} ->
+			Hmac = string:to_upper(HmacStr), 
 			case Method of
 				'PUT'	->    handle_put(User, Path, Hmac, BinData);
 				'GET'	->    handle_get(User, Path, Hmac, BinData);

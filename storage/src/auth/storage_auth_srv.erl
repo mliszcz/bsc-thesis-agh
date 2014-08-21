@@ -63,7 +63,7 @@ handle_call({authenticate, #request{user=UserId, hmac=Hmac}=Request},
 				[{UserId, Secret, Expires}] when Expires > Now ->
 
 					% try to validate request with cached secret
-					case list_to_binary(Hmac) == calculate_hmac(Request, Secret) of
+					case Hmac == calculate_hmac(Request, Secret) of
 
 						% everything ok, renew entry
 						true ->
@@ -95,7 +95,7 @@ handle_call({authenticate, #request{user=UserId, hmac=Hmac}=Request},
 
 							?LOG_INFO("calculating hmac for ~s~s = ~s", [Request#request.user, Request#request.path, calculate_hmac(Request, UserEntity#user.secret)]),
 
-							list_to_binary(Hmac) == calculate_hmac(Request, UserEntity#user.secret);
+							Hmac == calculate_hmac(Request, UserEntity#user.secret);
 
 						% dafuq are u?
 						{error, _} -> false
