@@ -1,7 +1,7 @@
 %% @author Michal
 %% @doc Shared data structures
 
--define(TIMEOUT, 30000).
+-define(TIMEOUT, 10000).
 
 
 % node server modules
