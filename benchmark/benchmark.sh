@@ -130,15 +130,16 @@ function test_cycle {
 NODES=(1 2 5 10 20 50)
 THREADS=(1 2 5 10 20 50)
 SIZES=(_4K _512K _1M _32M _128M _512M)
-ITER_LIM=1000
 
 NODES=(1 2 3)
 THREADS=(1 2 5)
 SIZES=(_512K _32M)
 
-NODES=(1)
-THREADS=(1)
-SIZES=(_4K)
+[[ -n "$2" ]] && NODES=($2)
+[[ -n "$3" ]] && THREADS=($3)
+[[ -n "$4" ]] && SIZES=($4)
+
+[[ -n "$5" ]] && ITER_LIM=($5)
 
 QUOTA=$(( 250 * 1024 * 1024 * 1024 ))	# 250 GB, max available disk space
 MEMORY=$(( 5  * 1024 * 1024 * 1024 ))	# 5 GB, max available memory

@@ -41,12 +41,12 @@ init(_Args) ->
 	{ok, get_mac_address(util:get_env(uuid_interface_name))}.
 
 handle_call(generate, From, State) ->
-	% spawn(fun() ->
+	spawn(fun() ->
 			Now = util:timestamp(),
 			Rand = crypto:rand_bytes(4),
 			BinId = << Now:48/integer, State/binary, Rand/binary >>,
-			gen_server:reply(From, util:binary_to_hex_string(BinId)),
-		% end),
+			gen_server:reply(From, util:binary_to_hex_string(BinId))
+		end),
 	{noreply, State}.
 
 handle_cast(stop, State) ->
