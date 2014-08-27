@@ -41,7 +41,8 @@ init(_Args) ->
 
 	process_flag(trap_exit, true),	% this is left for the sake of example and will be removed
 
-	ets:new(?EXECUTORS, [named_table, public, {heir, whereis(init), nothing} ]),
+	% ets:new(?EXECUTORS, [named_table, public, {heir, whereis(init), nothing} ]),
+	scheduler:init(),
 	% register(single_executor, spawn(fun() -> executor:run("executor", 0) end)),
 
 	Execs = [],
@@ -138,7 +139,9 @@ handle_cast({{request,
 	% end,
 
 	% single_executor ! {ReplyTo, Request},
-	executor:push(ReplyTo, Request),
+	% executor:push(ReplyTo, Request),
+
+	scheduler:execute(ReplyTo, Request),
 
 	% lists:nth(Next, Exec) ! {ReplyTo, Request},
 
@@ -148,7 +151,8 @@ handle_cast({{request,
 
 handle_cast(stop, State) ->
 	?LOG_INFO("shutdown"),
-	ets:delete(?EXECUTORS),
+	% ets:delete(?EXECUTORS),
+	scheduler:deinit(),
 	db_files:deinit(),
 	db_actions:deinit(),
 	{stop, normal, State}.
@@ -158,7 +162,8 @@ handle_info(_Info, State) ->
 
 terminate(_Reason, _State) ->
 	?LOG_INFO("closing"),
-	ets:delete(?EXECUTORS),
+	% ets:delete(?EXECUTORS),
+	scheduler:deinit(),
 	db_files:deinit(),
 	db_actions:deinit(),
 	ok.
