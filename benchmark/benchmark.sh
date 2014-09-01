@@ -131,9 +131,10 @@ NODES=(1 2 5 10 20 50)
 THREADS=(1 2 5 10 20 50)
 SIZES=(_4K _512K _1M _32M _128M _512M)
 
-NODES=(1 2 3)
-THREADS=(1 2 5)
-SIZES=(_512K _32M)
+NODES=(1)
+THREADS=(8)
+SIZES=(_16M)
+ITER_LIM=10
 
 [[ -n "$2" ]] && NODES=($2)
 [[ -n "$3" ]] && THREADS=($3)
@@ -153,8 +154,9 @@ do
 		do
 			echo "running cycle: $node nodes, $size sample, $thread threads"
 
-			ITER=$(( QUOTA / ( ${!size} * thread ) ))
-			(( ITER > $ITER_LIM )) && ITER=$ITER_LIM
+			# ITER=$(( QUOTA / ( ${!size} * thread ) ))
+			# (( ITER > $ITER_LIM )) && ITER=$ITER_LIM
+			ITER=$ITER_LIM
 			echo "$ITER iterations"
 
 			DSK_LIM=$(( QUOTA / node ))

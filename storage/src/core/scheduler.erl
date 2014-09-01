@@ -41,7 +41,7 @@ main({Execs, Jobs, Slots} = Status) ->
 			Executor = get_executor(Execs, UserId++VPath),
 			Executor ! {ReplyTo, Req},
 			main(continue_jobs(
-				{Execs, ordsets:add_element({Priority, Executor, make_ref()}, Jobs), Slots}
+				{Execs, add_element({Priority, Executor, make_ref()}, Jobs), Slots}
 				));
 
 		{done, _ExecName} ->
@@ -51,18 +51,39 @@ main({Execs, Jobs, Slots} = Status) ->
 				))
 	end.
 
+
+add_element(E, S) -> ordsets_add(E, [], S).
+
+% last item has highest priority
+ordsets_add(E, L, []) ->
+	lists:append(L, [E]);
+ordsets_add({P, X, _} = E, L, [{P0, X0, _}=R0|R]) ->
+	case {X == X0, P > P0} of
+		{false, true} ->ordsets_add(E, lists:append(L, [R0]), R);
+		_ -> lists:append([L, [E,R0], R])
+	end.
+
+
 continue_jobs({Execs, Jobs, Slots} = Status)
 	when Slots == 0; length(Jobs) == 0 ->
 	?LOG_INFO("nothing to continue"),
 	Status;
 
-continue_jobs({Execs, [{_Prior, NextExec, Ref} | RestJobs], Slots} = Status) ->
+continue_jobs({Execs, Jobs, Slots} = Status) ->
 	?LOG_INFO("continuing"),
+	{_Prior, NextExec, _Ref} = lists:last(Jobs),
 	NextExec ! continue,
-	continue_jobs({Execs, RestJobs, Slots-1}).
+	continue_jobs({Execs, lists:droplast(Jobs), Slots-1}).
 
 
-calc_prior(Req) -> 0.
+calc_prior(#request{type=Type}) ->
+	case Type of
+		find -> 0;
+		read -> 1;
+		create -> 2;
+		update -> 3;
+		_ -> 4
+	end.
 
 %% executors
 
