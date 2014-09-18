@@ -37,7 +37,7 @@ main({Execs, Jobs, Slots} = Status) ->
 
 		{exec, {ReplyTo, #request{user = UserId, path = VPath}=Req} = _Msg} ->
 			?LOG_INFO("scheduler got EXEC"),
-			Priority = calc_prior(Req),
+			Priority = -calc_prior(Req),
 			Executor = get_executor(Execs, UserId++VPath),
 			Executor ! {ReplyTo, Req},
 			main(continue_jobs(
