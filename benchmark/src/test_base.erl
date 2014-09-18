@@ -58,12 +58,14 @@ test_case(SetupFun, JobFun, TeardownFun) ->
 	Filesize = fixture:config(file_size, Fixture),
 
 	Setup = SetupFun(Fixture),
-	Times = run(Threads, Iterations, fun(T, N) -> JobFun(Setup, T, N) end),
+	{TotalMicrotime, Times} = timer:tc(fun run/3, [Threads, Iterations, fun(T, N) -> JobFun(Setup, T, N) end]),
+	% Times = run(Threads, Iterations, fun(T, N) -> JobFun(Setup, T, N) end),
 	TeardownFun(Setup),
 
 	fixture:teardown(Fixture),
 
-	Result = {Filesize, Threads, Iterations, Times},
+	Result = {Filesize, Threads, Iterations, [TotalMicrotime]},
+	% Result = {Filesize, Threads, Iterations, Times},
 	file:write_file(fixture:config(logfile, Fixture), io_lib:fwrite("~p~n", [Result]), [append]),
 	Result.
 

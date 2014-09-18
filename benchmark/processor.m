@@ -4,6 +4,7 @@
 (*cwdPath=NotebookDirectory[];*)
 (*outPath=cwdPath<>"out/";*)
 (*outPath="/home/michal/Documents/inz/results_sig-10_dry/out-iter2/";*)
+(*outPath="/home/michal/Documents/inz/results_t440_dry/out/";*)
 (**)
 (*s4K=4*1024;*)
 (*s512K=512*1024;*)

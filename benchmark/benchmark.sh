@@ -134,7 +134,7 @@ SIZES=(_4K _512K _1M _32M _128M _512M)
 NODES=(1)
 THREADS=(32)
 SIZES=(_16M)
-ITER_LIM=10
+ITER_LIM=100
 
 [[ -n "$2" ]] && NODES=($2)
 [[ -n "$3" ]] && THREADS=($3)
