@@ -72,10 +72,10 @@
 
 
 -record(request, {
-	type, 			% create | read | update | delete | list | find
-	user, 			% list()
-	path = none, 	% list()
-	hmac = none, 	% list()
-	data = none, 	% binary()
-	opts = none 	% -unused-
+	type, 					% create | read | update | delete | list | find
+	user, 					% list()
+	addr = {none, none}, 	% {owner, vpath}
+	hmac = none, 			% list()
+	data = none, 			% binary()
+	opts = none 			% -unused-
 	}).

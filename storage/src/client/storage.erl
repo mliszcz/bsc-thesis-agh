@@ -15,30 +15,30 @@
 	]).
 
 
-create(Node, User, Path, Hmac, Data) ->
-	dist_call(Node, {create, User, Path, Hmac, Data}).
+create(Node, User, Owner, Path, Hmac, Data) ->
+	dist_call(Node, {create, User, Owner, Path, Hmac, Data}).
 
-read(Node, User, Path, Hmac) ->
-	dist_call(Node, {read, User, Path, Hmac, none}).
+read(Node, User, Owner, Path, Hmac) ->
+	dist_call(Node, {read, User, Owner, Path, Hmac, none}).
 
-update(Node, User, Path, Hmac, Data) ->
-	dist_call(Node, {update, User, Path, Hmac, Data}).
+update(Node, User, Owner, Path, Hmac, Data) ->
+	dist_call(Node, {update, User, Owner, Path, Hmac, Data}).
 
-delete(Node, User, Path, Hmac) ->
-	dist_call(Node, {delete, User, Path, Hmac, none}).
+delete(Node, User, Owner, Path, Hmac) ->
+	dist_call(Node, {delete, User, Owner, Path, Hmac, none}).
 
-list(Node, User, Path, Hmac) ->
-	dist_call(Node, {list, User, Path, Hmac, none}).
+list(Node, User, Owner, Path, Hmac) ->
+	dist_call(Node, {list, User, Owner, Path, Hmac, none}).
 
-find(Node, User, Path, Hmac) ->
-	dist_call(Node, {find, User, Path, Hmac, none}).
+find(Node, User, Owner, Path, Hmac) ->
+	dist_call(Node, {find, User, Owner, Path, Hmac, none}).
 
 
-dist_call(Node, {Type, User, Path, Hmac, Data}) ->
+dist_call(Node, {Type, User, Owner, Path, Hmac, Data}) ->
 	try gen_server:call({?SERVER, Node}, {request,
 			#request{	type = Type,
 						user = User,
-						path = Path,
+						addr = {Owner, Path}
 						data = Data,
 						hmac = Hmac
 					}
@@ -48,22 +48,3 @@ dist_call(Node, {Type, User, Path, Hmac, Data}) ->
 		_:{{nodedown, _}, _} -> {error, nodedown};
 		_:_	-> {error, unknown}
 	end.
-
-
-% sign_request(#request{}=Request, Hmac) ->
-% 	% TBD: use this one or call auth_srv({sign_request, ...})
-% 	SignedRequest = Request#request{hmac = calculate_hmac(Request, Hmac)},
-% 	SignedRequest.
-
-
-% calculate_hmac(
-% 	#request{
-% 		type=Type,
-% 		user=UserId,
-% 		path=Path
-% 	}, Hmac) ->
-% 	crypto:hmac(sha, Hmac, list_to_binary([
-% 		atom_to_list(Type),
-% 		integer_to_list(UserId),
-% 		Path
-% 		])).
