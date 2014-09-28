@@ -107,23 +107,32 @@ handle_context_manager(Method, Path) ->
 	end.
 
 
-handle_context_storage(Method, Path, Sock) ->
+handle_context_storage(Method, FullPath, Sock) ->
+
+	[Owner, Path] = re:split(FullPath, "/", [{return, list}, {parts, 2}]).
 
 	{Headers, BinData} = http_utils:parse_request(Sock),
-	?LOG_INFO("context storage with path '~s'", [Path]),
-	try extract_credentials(Headers) of
-		{User, HmacStr} ->
+	?LOG_INFO("context storage with path '~s'", [FullPath]),
+
+	try {
+			extract_credentials(Headers),
+			re:split(FullPath, "/", [{return, list}, {parts, 2}])
+		} of
+		{
+			{User, HmacStr},
+			[Owner, Path]
+		} ->
 			Hmac = string:to_upper(HmacStr), 
 			case Method of
-				'PUT'	->    handle_put(User, Path, Hmac, BinData);
-				'GET'	->    handle_get(User, Path, Hmac, BinData);
-				'POST'	->   handle_post(User, Path, Hmac, BinData);
-				'DELETE'-> handle_delete(User, Path, Hmac, BinData);
-				'HEAD'	->   handle_head(User, Path, Hmac, BinData);
-				_		->  handle_other(Path)
+				'PUT'	->    handle_put(User, Owner, Path, Hmac, BinData);
+				'GET'	->    handle_get(User, Owner, Path, Hmac, BinData);
+				'POST'	->   handle_post(User, Owner, Path, Hmac, BinData);
+				'DELETE'-> handle_delete(User, Owner, Path, Hmac, BinData);
+				'HEAD'	->   handle_head(User, Owner, Path, Hmac, BinData);
+				_		->  handle_other(FullPath)
 			end
 	catch
-		_:_ -> handle_other(Path)
+		_:_ -> handle_other(FullPath)
 	end.
 
 %%
@@ -144,9 +153,9 @@ extract_credentials(Headers) ->
 	{UserIdStr, HmacStr}.
 
 
-handle_post(User, Path, Hmac, BinData) ->
+handle_post(User, Owner, Path, Hmac, BinData) ->
 
-	case storage:create(node(), User, Path, Hmac, BinData) of
+	case storage:create(node(), User, Owner, Path, Hmac, BinData) of
 		{ok,	created}				-> {'Created', 		text, [], << >>};
 		{error,	timeout}				-> {'NotAllowed',	text, [], << >>};
 		{error,	file_exists}			-> {'NotAllowed',	text, [], << >>};
@@ -155,18 +164,18 @@ handle_post(User, Path, Hmac, BinData) ->
 	end.
 
 
-handle_get(User, Path, Hmac, _BinData) when Path == "" ->
+handle_get(User, Owner, Path, Hmac, _BinData) when Path == "" ->
 
-	case storage:list(node(), User, "/", Hmac) of
+	case storage:list(node(), User, Owner, "/", Hmac) of
 		{ok,	ErlList}				-> {'OK', 			json, [], list_to_binary(file_list_to_json(ErlList))};
 		{error, authenticaiton_failed}	-> {'Unauthorized', text, [], << >>};
 		{error,	_}						-> {'BadRequest',	text, [], << >>}
 	end;
 
 
-handle_get(User, Path, Hmac, _BinData) ->
+handle_get(User, Owner, Path, Hmac, _BinData) ->
 
-	case storage:read(node(), User, Path, Hmac) of
+	case storage:read(node(), User, Owner, Path, Hmac) of
 		{ok,	RawData}				-> {'OK',			file, [], RawData};
 		{error,	timeout}				-> {'NotFound',		text, [], << >>};
 		{error, not_found}				-> {'NotFound', 	text, [], << >>};
@@ -175,9 +184,9 @@ handle_get(User, Path, Hmac, _BinData) ->
 	end.
 
 
-handle_put(User, Path, Hmac, BinData) ->
+handle_put(User, Owner, Path, Hmac, BinData) ->
 
-	case storage:update(node(), User, Path, Hmac, BinData) of
+	case storage:update(node(), User, Owner, Path, Hmac, BinData) of
 		{ok,	_}						-> {'Accepted',		text, [], << >>};
 		{error, not_found}				-> {'NotFound',		text, [], << >>};
 		{error, authenticaiton_failed}	-> {'Unauthorized', text, [], << >>};
@@ -185,9 +194,9 @@ handle_put(User, Path, Hmac, BinData) ->
 	end.
 
 
-handle_delete(User, Path, Hmac, _BinData) ->
+handle_delete(User, Owner, Path, Hmac, _BinData) ->
 
-	case storage:delete(node(), User, Path, Hmac) of
+	case storage:delete(node(), User, Owner, Path, Hmac) of
 		{ok,	deleted}				-> {'Accepted',		text, [], << >>};
 		{error,	not_found}				-> {'NotFound',		text, [], << >>};
 		{error, authenticaiton_failed}	-> {'Unauthorized', text, [], << >>};
@@ -195,9 +204,9 @@ handle_delete(User, Path, Hmac, _BinData) ->
 	end.
 
 
-handle_head(User, Path, Hmac, _BinData) ->
+handle_head(User, Owner, Path, Hmac, _BinData) ->
 
-	case storage:find(node(), User, Path, Hmac) of
+	case storage:find(node(), User, Owner, Path, Hmac) of
 		{ok,	Node	}				-> {'OK',			file, [], util:term_to_binary_string(Node)};
 		{error, not_found}				-> {'NotFound',		text, [], << >>};
 		{error, authenticaiton_failed}	-> {'Unauthorized', text, [], << >>};
