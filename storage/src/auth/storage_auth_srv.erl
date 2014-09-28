@@ -93,7 +93,7 @@ handle_call({authenticate, #request{user=UserId, hmac=Hmac}=Request},
 							ets:insert(State, {UserEntity#user.name, UserEntity#user.secret,
 								Now+?EXPIRATION_TIME}),
 
-							?LOG_INFO("calculating hmac for ~s~s = ~s", [Request#request.user, Request#request.path, calculate_hmac(Request, UserEntity#user.secret)]),
+							?LOG_INFO("calculating hmac for ~s~p = ~s", [Request#request.user, Request#request.addr, calculate_hmac(Request, UserEntity#user.secret)]),
 
 							Hmac == calculate_hmac(Request, UserEntity#user.secret);
 

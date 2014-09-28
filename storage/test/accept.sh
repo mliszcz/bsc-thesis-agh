@@ -44,11 +44,11 @@ function curl_exec {
 	# $3 - target
 	# $4 - file
 
-	local userid="derp"
+	local userid="anonymous"
 	local secret="82f63b78"
-	local hmac=$(calc_hmac $secret "${1}${userid}${3}")
+	local hmac=$(calc_hmac $secret "${1}${userid}${userid}/${3}")
 
-	curl -X $1 "$2/storage/$3" \
+	curl -X $1 "$2/storage/${userid}/$3" \
 		 -H "Authorization: HMAC $userid:$hmac" \
 		 $( [[ -n "$4" ]] && [[ "GET" == "$1" ]] && echo "-o $4" || echo "" ) \
 		 $( [[ -n "$4" ]] && [[ "GET" != "$1" ]] && echo "--data-binary @$4" || echo "" ) \
