@@ -109,8 +109,6 @@ handle_context_manager(Method, Path) ->
 
 handle_context_storage(Method, FullPath, Sock) ->
 
-	[Owner, Path] = re:split(FullPath, "/", [{return, list}, {parts, 2}]).
-
 	{Headers, BinData} = http_utils:parse_request(Sock),
 	?LOG_INFO("context storage with path '~s'", [FullPath]),
 

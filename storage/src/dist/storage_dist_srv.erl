@@ -49,9 +49,9 @@ init(_Args) ->
 	{ok, RemoteNodes}.
 
 
-handle_call({request, #request{type=create, path=Path}=Request},
+handle_call({request, #request{type=create, addr=Addr}=Request},
 	From, State) ->
-	?LOG_INFO("creating ~s", [Path]),
+	?LOG_INFO("creating ~p", [Addr]),
 	spawn_link(
 		fun() ->
 			case ?AUTH_CALL(node(), Request) of
@@ -68,9 +68,9 @@ handle_call({request, #request{type=create, path=Path}=Request},
 	{noreply, State};
 
 
-handle_call({request, #request{type=update, path=Path}=Request},
+handle_call({request, #request{type=update, addr=Addr}=Request},
 	From, State) ->
-	?LOG_INFO("updating ~s", [Path]),
+	?LOG_INFO("updating ~p", [Addr]),
 	spawn_link(
 		fun() ->
 			case ?AUTH_CALL(node(), Request) of

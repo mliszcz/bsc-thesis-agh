@@ -26,7 +26,7 @@ deinit() ->
 	?PROC ! stop.
 
 
-execute(ReplyTo, #request{user = UserId, path = VPath}=Request) ->
+execute(ReplyTo, #request{}=Request) ->
 	?LOG_INFO("pushing to scheduler"),
 	?PROC ! {exec, {ReplyTo, Request}}.
 
@@ -35,7 +35,7 @@ main({Execs, Jobs, Slots} = Status) ->
 	receive
 		stop -> ets:delete(Execs), ok;
 
-		{exec, {ReplyTo, #request{user = UserId, path = VPath}=Req} = _Msg} ->
+		{exec, {ReplyTo, #request{user = IssuerId, addr = {UserId, VPath}}=Req} = _Msg} ->
 			?LOG_INFO("scheduler got EXEC"),
 			Priority = -calc_prior(Req),
 			Executor = get_executor(Execs, UserId++VPath),

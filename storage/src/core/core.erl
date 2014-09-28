@@ -10,8 +10,8 @@
 handle_req(
 	#request{
 		type=create,
-		user=UserId,
-		path=VPath,
+		user=IssuerId,
+		addr={UserId, VPath},
 		data=PData
 	}=_Request) ->
 	?LOG_INFO("create ~s", [VPath]),
@@ -45,8 +45,8 @@ handle_req(
 handle_req(
 	#request{
 	type=update,
-	user=UserId,
-	path=VPath,
+	user=IssuerId,
+	addr={UserId, VPath},
 	data=Data
 	}=_Request) ->
 	?LOG_INFO("update ~s", [VPath]),
@@ -73,8 +73,8 @@ handle_req(
 handle_req(
 	#request{
 		type=read,
-		user=UserId,
-		path=VPath
+		user=IssuerId,
+		addr={UserId, VPath}
 	}) ->
 	?LOG_INFO("read ~s", [VPath]),
 	case db_files:select(UserId, VPath) of
@@ -88,8 +88,8 @@ handle_req(
 handle_req(
 	#request{
 		type=delete,
-		user=UserId,
-		path=VPath
+		user=IssuerId,
+		addr={UserId, VPath}
 	}) ->
 	?LOG_INFO("delete ~s", [VPath]),
 	case db_files:select(UserId, VPath) of
@@ -112,8 +112,8 @@ handle_req(
 handle_req(
 	#request{
 		type=find,
-		user=User,
-		path=Path
+		user=Issuer,
+		addr={User, Path}
 	}) ->
 	?LOG_INFO("find ~s", [Path]),
 	case db_files:exists( User, Path) of

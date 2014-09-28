@@ -119,7 +119,7 @@ handle_cast({release, HowMuch}, State) ->
 handle_cast({{request,
 	#request{
 		type=_Type,
-		path=Path,
+		addr={Owner, Path},
 		user=_User
 		}=Request}, ReplyTo}, {_Fill, _Quota, {Exec, Next}}=State) ->
 

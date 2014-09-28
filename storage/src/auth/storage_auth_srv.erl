@@ -153,7 +153,7 @@ calculate_hmac(
 	#request{
 		type=Type,
 		user=UserId,
-		path=Path
+		addr={Owner, Path}
 	}, Secret) ->
 	Method = case Type of
 		create 	-> "POST";
@@ -164,7 +164,7 @@ calculate_hmac(
 		find 	-> "HEAD"
 	end,
 	util:binary_to_hex_string(
-		crypto:hmac(sha, Secret, Method++UserId++Path)
+		crypto:hmac(sha, Secret, Method++UserId++Owner++"/"++Path)
 		).
 
 fetch_user(UserId) ->

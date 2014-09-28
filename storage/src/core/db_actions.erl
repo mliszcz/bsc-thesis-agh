@@ -50,8 +50,8 @@ create(#action{} = Entity) ->
 	{ok, NewEntity}.
 
 
-store(#request{type=Type, user=User, path=Path} = Request) ->
-	case db_files:select(User, Path) of
+store(#request{type=Type, user=User, addr={Owner, Path}} = Request) ->
+	case db_files:select(Owner, Path) of
 		{ok, File} ->
 			create(#action{
 				user_id = User,

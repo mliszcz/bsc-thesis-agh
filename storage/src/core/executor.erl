@@ -40,7 +40,7 @@ run(Name, MemoryLimit) ->
 
 
 %% @def pushes request to associated executor and returns immediately
-push(ReplyTo, #request{user = UserId, path = VPath}=Request) ->
+push(ReplyTo, #request{user = IssuerId, addr = {UserId, VPath}}=Request) ->
 	% get_executor(<< UserId/binary, VPath/binary >>) ! {ReplyTo, Request},
 	get_executor(UserId++VPath) ! {ReplyTo, Request},
 	{ok, request_pushed}.

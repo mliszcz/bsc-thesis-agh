@@ -6,12 +6,12 @@
 -define(SERVER, ?DIST_SERVER).
 
 -export([
-	create/5,
-	read/4,
-	update/5,
-	delete/4,
-	list/4,
-	find/4
+	create/6,
+	read/5,
+	update/6,
+	delete/5,
+	list/5,
+	find/5
 	]).
 
 
@@ -38,7 +38,7 @@ dist_call(Node, {Type, User, Owner, Path, Hmac, Data}) ->
 	try gen_server:call({?SERVER, Node}, {request,
 			#request{	type = Type,
 						user = User,
-						addr = {Owner, Path}
+						addr = {Owner, Path},
 						data = Data,
 						hmac = Hmac
 					}
