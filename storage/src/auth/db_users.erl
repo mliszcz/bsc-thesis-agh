@@ -34,11 +34,11 @@ init(DatabaseLocation) ->
 			storage_grant	INTEGER 	NOT NULL DEFAULT 0
 		);"),
 
-	case select_by_name("derp") of
+	case select_by_name("anonymous") of
 		{ok, _} -> pass;
 		{error, _} ->
-			User = instantiate_entity({<< >>, <<"derp">>, <<"82f63b78">>, 0, 0}),
-			{ok, #user{name = "derp"}} = create(User)
+			User = instantiate_entity({<< >>, <<"anonymous">>, <<"82f63b78">>, 0, 0}),
+			{ok, #user{name = "anonymous"}} = create(User)
 	end.
 
 
