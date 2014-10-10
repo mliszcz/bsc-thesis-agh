@@ -46,7 +46,7 @@ function curl_exec {
 
 	local userid="anonymous"
 	local secret="82f63b78"
-	local hmac=$(calc_hmac $secret "${1}${userid}${userid}/${3}")
+	local hmac=$(calc_hmac $secret "${1}:${userid}:/${userid}/${3}")
 
 	curl -X $1 "$2/storage/${userid}/$3" \
 		 -H "Authorization: HMAC $userid:$hmac" \

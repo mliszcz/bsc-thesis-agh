@@ -164,7 +164,7 @@ calculate_hmac(
 		find 	-> "HEAD"
 	end,
 	util:binary_to_hex_string(
-		crypto:hmac(sha, Secret, Method++UserId++Owner++"/"++Path)
+		crypto:hmac(sha, Secret, Method++":"++UserId++":/"++Owner++"/"++Path)
 		).
 
 fetch_user(UserId) ->
