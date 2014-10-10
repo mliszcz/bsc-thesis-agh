@@ -76,62 +76,37 @@ handle_request(Sock) ->
 
 	{ok, {http_request, Method, {_, FullPath}, _Version}} = gen_tcp:recv(Sock, 0),
 
+	?LOG_INFO("received ~p from ~s (~s)", [Method, http_utils:hostaddr(Sock), FullPath]),
+
 	Response = case string:tokens(FullPath, "/") of
 
-		[Context | Elements] ->
-
-			Path = string:join(Elements, "/"),
-
-			?LOG_INFO("accepted ~p from ~s (~s)", [Method, http_utils:hostaddr(Sock), FullPath]),
-
-			case Context of
-				"storage" 		-> handle_context_storage(Method, Path, Sock);
-				"manager" 		-> handle_context_manager(Method, Path);
-				"favicon.ico" 	-> handle_other(Path);
-				_ 				-> handle_other(Path)
-			end;
-
-		[] -> handle_context_manager(Method, "/")
+		["storage", Owner | PathParts] 		-> handle_context_storage(Method, {Owner, string:join(PathParts, "/")}, Sock);
+		["manager" | _] 					-> handle_context_manager(Method);
+		[] 									-> handle_context_manager(Method);
+		["favicon.ico"] 					-> handle_other();
+		_ 									-> handle_other()
 	end,
 
 	http_utils:send_response(Sock, Response),
 	gen_tcp:close(Sock).
 
+
 % TODO load this only once
-handle_context_manager(Method, Path) ->
-	case Method of
-		'GET' ->
-			{ok, BinManager} = file:read_file(code:priv_dir(util:get_app())++"/manager.html"),
-			{'OK', html, [], BinManager};
-		_ -> handle_other(Path)
-	end.
+handle_context_manager('GET') ->
+	{ok, BinManager} = file:read_file(code:priv_dir(util:get_app())++"/manager.html"),
+	{'OK', html, [], BinManager};
+handle_context_manager(_) ->
+	handle_other().
 
 
-handle_context_storage(Method, FullPath, Sock) ->
-
+handle_context_storage(Method, {Owner, Path}, Sock) ->
 	{Headers, BinData} = http_utils:parse_request(Sock),
-	?LOG_INFO("context storage with path '~s'", [FullPath]),
-
-	try {
-			extract_credentials(Headers),
-			re:split(FullPath, "/", [{return, list}, {parts, 2}])
-		} of
-		{
-			{User, HmacStr},
-			[Owner, Path]
-		} ->
-			Hmac = string:to_upper(HmacStr), 
-			case Method of
-				'PUT'	->    handle_put(User, Owner, Path, Hmac, BinData);
-				'GET'	->    handle_get(User, Owner, Path, Hmac, BinData);
-				'POST'	->   handle_post(User, Owner, Path, Hmac, BinData);
-				'DELETE'-> handle_delete(User, Owner, Path, Hmac, BinData);
-				'HEAD'	->   handle_head(User, Owner, Path, Hmac, BinData);
-				_		->  handle_other(FullPath)
-			end
+	try extract_credentials(Headers) of
+		{User, HmacStr} -> handle_context_storage_method(Method, User, Owner, Path, string:to_upper(HmacStr), BinData)
 	catch
-		_:_ -> handle_other(FullPath)
+		_:_ -> handle_other()
 	end.
+
 
 %%
 %% method-specific handlers
@@ -151,7 +126,7 @@ extract_credentials(Headers) ->
 	{UserIdStr, HmacStr}.
 
 
-handle_post(User, Owner, Path, Hmac, BinData) ->
+handle_context_storage_method('POST', User, Owner, Path, Hmac, BinData) ->
 
 	case storage:create(node(), User, Owner, Path, Hmac, BinData) of
 		{ok,	created}				-> {'Created', 		text, [], << >>};
@@ -159,10 +134,10 @@ handle_post(User, Owner, Path, Hmac, BinData) ->
 		{error,	file_exists}			-> {'NotAllowed',	text, [], << >>};
 		{error, authenticaiton_failed}	-> {'Unauthorized', text, [], << >>};
 		{error,	_}						-> {'BadRequest',	text, [], << >>}
-	end.
+	end;
 
 
-handle_get(User, Owner, Path, Hmac, _BinData) when Path == "" ->
+handle_context_storage_method('GET', User, Owner, Path, Hmac, _BinData) when Path == "" ->
 
 	case storage:list(node(), User, Owner, "/", Hmac) of
 		{ok,	ErlList}				-> {'OK', 			json, [], list_to_binary(file_list_to_json(ErlList))};
@@ -171,7 +146,7 @@ handle_get(User, Owner, Path, Hmac, _BinData) when Path == "" ->
 	end;
 
 
-handle_get(User, Owner, Path, Hmac, _BinData) ->
+handle_context_storage_method('GET', User, Owner, Path, Hmac, _BinData) ->
 
 	case storage:read(node(), User, Owner, Path, Hmac) of
 		{ok,	RawData}				-> {'OK',			file, [], RawData};
@@ -179,40 +154,43 @@ handle_get(User, Owner, Path, Hmac, _BinData) ->
 		{error, not_found}				-> {'NotFound', 	text, [], << >>};
 		{error, authenticaiton_failed}	-> {'Unauthorized', text, [], << >>};
 		{error,	_}						-> {'BadRequest', 	text, [], << >>}
-	end.
+	end;
 
 
-handle_put(User, Owner, Path, Hmac, BinData) ->
+handle_context_storage_method('PUT', User, Owner, Path, Hmac, BinData) ->
 
 	case storage:update(node(), User, Owner, Path, Hmac, BinData) of
 		{ok,	_}						-> {'Accepted',		text, [], << >>};
 		{error, not_found}				-> {'NotFound',		text, [], << >>};
 		{error, authenticaiton_failed}	-> {'Unauthorized', text, [], << >>};
 		{error,	_}						-> {'BadRequest',	text, [], << >>}
-	end.
+	end;
 
 
-handle_delete(User, Owner, Path, Hmac, _BinData) ->
+handle_context_storage_method('DELETE', User, Owner, Path, Hmac, _BinData) ->
 
 	case storage:delete(node(), User, Owner, Path, Hmac) of
 		{ok,	deleted}				-> {'Accepted',		text, [], << >>};
 		{error,	not_found}				-> {'NotFound',		text, [], << >>};
 		{error, authenticaiton_failed}	-> {'Unauthorized', text, [], << >>};
 		{error,	_}						-> {'BadRequest',	text, [], << >>}
-	end.
+	end;
 
 
-handle_head(User, Owner, Path, Hmac, _BinData) ->
+handle_context_storage_method('HEAD', User, Owner, Path, Hmac, _BinData) ->
 
 	case storage:find(node(), User, Owner, Path, Hmac) of
 		{ok,	Node	}				-> {'OK',			file, [], util:term_to_binary_string(Node)};
 		{error, not_found}				-> {'NotFound',		text, [], << >>};
 		{error, authenticaiton_failed}	-> {'Unauthorized', text, [], << >>};
 		{error,	_}						-> {'BadRequest',	text, [], << >>}
-	end.
+	end;
+
+handle_context_storage_method(_Method, _User, _Owner, _Path, _Hmac, _BinData) ->
+	handle_other().
 
 
-handle_other(_Path) ->
+handle_other() ->
 	?LOG_WARN("unsupported operation requested"),
 	{'BadRequest', text, [], << >>}.
 
