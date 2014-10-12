@@ -295,9 +295,20 @@
 						// pom.setAttribute('download', 'file_name'); 
 						// pom.click()
 
-						var blob = new Blob([data], {type: "application/octet-stream"});
-						var objectUrl = URL.createObjectURL(blob);
-						window.open(objectUrl);
+						var parts = path.split('/')
+						var fname = parts[parts.length-1]
+
+						var blob = new Blob([data], {type: "application/octet-stream"})
+						var objectUrl = URL.createObjectURL(blob)
+						// window.open(objectUrl);
+
+						var a = document.createElement("a")
+    					document.body.appendChild(a)
+    					a.style = "display: none"
+        				a.href = objectUrl
+        				a.download = fname
+        				a.click()
+        				// window.URL.revokeObjectURL(objectUrl);
 
 					}).error(function(data, status, headers, config) {
 						alert('download failed with error code ' + status + '\n' + data)
