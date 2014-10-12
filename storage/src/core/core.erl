@@ -64,6 +64,7 @@ handle_req(
 			db_files:update(File#file{bytes=NewSize}),
 
 			files:write(File#file.id, Data),
+			?LOG_INFO("update successful, returning OK"),
 			{ok, updated}
 	end;
 
