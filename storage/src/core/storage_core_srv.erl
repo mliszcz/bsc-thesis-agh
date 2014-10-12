@@ -78,7 +78,8 @@ handle_call({{request,
 		}=Request}, _ReplyTo}, From, {_Fill, _Quota, _}=State) ->
 
 	?LOG_INFO("received ~p from ~p (~p)", [Request#request.type, Request#request.user, Request#request.addr]),
-	executor:push(From, Request),
+	% executor:push(From, Request),
+	scheduler:execute(From, Request),
 	{noreply, State};
 
 handle_call({reserve, HowMuch}, _From, State) ->

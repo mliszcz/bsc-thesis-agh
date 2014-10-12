@@ -213,11 +213,11 @@ format_node_entry({Node, FileList}) ->
 
 format_file_entry(#file{
 	id 			= Id, 			% list()
-	owner 		= _Owner, 		% list()
+	owner 		= Owner, 		% list()
 	vpath 		= VPath,		% list()
 	bytes 		= Bytes,		% integer()
 	access_mode = _AccMod, 		% integer()
 	create_time = CreatTim		% integer()
 	}) ->
-	io_lib:format("\"id\":\"~s\",\"vpath\":\"~s\",\"bytes\":~p,\"created\":~p",
-		[Id, VPath, Bytes, CreatTim]).
+	io_lib:format("\"id\":\"~s\",\"vpath\":\"~s/~s\",\"bytes\":~p,\"created\":~p",
+		[Id, Owner, VPath, Bytes, CreatTim]).

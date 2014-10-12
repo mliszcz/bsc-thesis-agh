@@ -84,7 +84,10 @@
 					ng-submit="submit(uploadForm.dir, uploadForm.name)"
 					class="form-inline panel-body" >
 
-				<span class="form-control" disabled>storage/</span>
+				<span class="form-control" disabled>storage</span>
+				<span class="form-control" disabled>/</span>
+				<span class="form-control" disabled>{{user.login}}</span>
+				<span class="form-control" disabled>/</span>
 
 				<span class="form-group"  ng-attr-class="{{_uploadForm.dir.$valid && 'has-success' || 'has-error'}}">
 				<input name="dir" type="text" ng-model="uploadForm.dir" class="form-control"
@@ -118,7 +121,7 @@
 	
 				<table class="table table-hover">
 					<tr>
-						<th>id</th>
+						<!-- <th>id</th> -->
 						<th>node</th>
 						<th>path</th>
 						<th>size [bytes]</th>
@@ -126,7 +129,7 @@
 					</tr>
 					<tr ng-repeat="file in fileList | orderBy:'created':true" ng-click="download(file.vpath)"
 						style="cursor: pointer;">
-						<td>{{file.id}}</td>
+						<!-- <td>{{file.id}}</td> -->
 						<td>{{file.node}}</td>
 						<td>{{file.vpath}}</td>
 						<td>{{file.bytes}}</td>
@@ -173,7 +176,7 @@
 				}
 
 				// default user
-				$scope.submit('derp', '82f63b78')
+				$scope.submit('anonymous', '82f63b78')
 			})
 
 			managerApp.controller('uploadController', function($scope, $http) {
@@ -188,17 +191,19 @@
 				$scope.submit = function(dir, name) {
 
 					var path = (dir) ? (dir + '/' + name) : name
+					var path = $scope.user.login + '/' + path
+
 					var reader = new FileReader()
 
 					reader.onloadend = function(e) {
 
 						var binaryData = e.target.result
 
-						hmac = CryptoJS.HmacSHA1('POST' + $scope.user.login + path, $scope.user.secret)
+						hmac = CryptoJS.HmacSHA1('POST:' + $scope.user.login + ':/' + path, $scope.user.secret)
 
 						$http({
 							method: 'POST',
-							url: 'http://localhost:8090/storage/'.concat(path),
+							url: window.location.protocol + '//' + window.location.host + '/storage/' + path,
 							headers: {
 								'Authorization' : 'HMAC ' + $scope.user.login + ':' + hmac,
 								'Content-Type' 	: 'application/octet-stream'
@@ -226,11 +231,11 @@
 
 				$scope.reload = function() {
 
-					hmac = CryptoJS.HmacSHA1('GET' + $scope.user.login + '/', $scope.user.secret)
+					hmac = CryptoJS.HmacSHA1('GET:' + $scope.user.login + ':/' + $scope.user.login + '//', $scope.user.secret)
 
 					$http({
 						method: 'GET',
-						url: 'http://localhost:8090/storage/',
+						url: window.location.protocol + '//' + window.location.host + '/storage/' + $scope.user.login,
 						headers: {
 							'Authorization' : 'HMAC ' + $scope.user.login + ':' + hmac,
 						}
@@ -245,11 +250,11 @@
 
 				$scope.download = function(path) {
 
-					hmac = CryptoJS.HmacSHA1('GET' + $scope.user.login + path, $scope.user.secret)
+					hmac = CryptoJS.HmacSHA1('GET:' + $scope.user.login + ':/' + path, $scope.user.secret)
 
 					$http({
 						method: 'GET',
-						url: 'http://localhost:8090/storage/' + path,
+						url: window.location.protocol + '//' + window.location.host + '/storage/' + path,
 						headers: {
 							'Authorization' : 'HMAC ' + $scope.user.login + ':' + hmac,
 						}
