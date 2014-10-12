@@ -97,8 +97,8 @@
 				<span class="form-control" disabled>/</span>
 				
 				<span class="form-group" ng-attr-class="{{_uploadForm.name.$valid && 'has-success' || 'has-error'}}">
-				<input name="name" type="text" ng-model="uploadForm.name" class="form-control"
-					placeholder="filename" required ng-pattern="/^\w+(.\w+)?$/" />
+				<input name="name" type="text" ng-model="uploadForm.name" class="form-control" id="uploadFormName"
+					placeholder="filename" required ng-pattern="/^[\w+-\.]*(.\w+)?$/" />
 				</span>
 
 				<input filelist-bind name="files" type="file" ng-model="fuck_u_angular" required />
@@ -185,7 +185,18 @@
 				$scope.file = [{name: ''}]
 
 				$scope.$watch('files[0]', function(newValue, oldValue) {
+
+					// $scope.uploadForm.name = $scope.files[0].name
+
+					// trigger validation
 					$scope.uploadForm.name = $scope.files[0].name
+
+					// invalid content gets removed
+					// put it manually
+					// NOT WORKING !!!!!!!!!!!!!
+					var elem = document.getElementById("uploadFormName");
+					elem.value = $scope.files[0].name
+
 					console.log($scope.files[0])
 				})
 
