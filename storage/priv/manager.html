@@ -186,6 +186,7 @@
 
 				$scope.$watch('files[0]', function(newValue, oldValue) {
 					$scope.uploadForm.name = $scope.files[0].name
+					console.log($scope.files[0])
 				})
 
 				$scope.submit = function(dir, name) {
@@ -198,6 +199,7 @@
 					reader.onloadend = function(e) {
 
 						var binaryData = e.target.result
+						console.log(binaryData.length)
 
 						hmac = CryptoJS.HmacSHA1('POST:' + $scope.user.login + ':/' + path, $scope.user.secret)
 
@@ -206,8 +208,10 @@
 							url: window.location.protocol + '//' + window.location.host + '/storage/' + path,
 							headers: {
 								'Authorization' : 'HMAC ' + $scope.user.login + ':' + hmac,
-								'Content-Type' 	: 'application/octet-stream'
+								'Content-Type' 	: 'application/octet-stream',
+								'Content-Transfer-Encoding' : 'binary'
 							},
+							transformRequest: function(dd) { return dd },
 							data: binaryData
 
 						}).success(function(data, status, headers, config) {
@@ -219,7 +223,8 @@
 						})
 					}
 
-					reader.readAsBinaryString($scope.files[0])
+					reader.readAsArrayBuffer($scope.files[0])
+					// reader.readAsBinaryString($scope.files[0])
 				}
 			})
 
@@ -252,14 +257,43 @@
 
 					hmac = CryptoJS.HmacSHA1('GET:' + $scope.user.login + ':/' + path, $scope.user.secret)
 
+					// var xhr = new XMLHttpRequest()
+					// xhr.open("GET", window.location.protocol + '//' + window.location.host + '/storage/' + path)
+					// xhr.responseType = "arraybuffer"
+					
+					// xhr.onload = function () {
+					//     if (this.status === 200) {
+					//         var blob = new Blob(xhr.response, {type: "data:application/octet-stream"});
+					//         var objectUrl = URL.createObjectURL(blob);
+					//         window.open(objectUrl);
+					//     }
+					// };
+					// xhr.send();
+
 					$http({
 						method: 'GET',
 						url: window.location.protocol + '//' + window.location.host + '/storage/' + path,
 						headers: {
 							'Authorization' : 'HMAC ' + $scope.user.login + ':' + hmac,
-						}
+						},
+						responseType: 'arraybuffer',
+						transformResponse: function(dd) { return dd }
 
 					}).success(function(data, status, headers, config) {
+						console.log(data.length)
+
+						// var hiddenElement = document.createElement('a');
+						// hiddenElement.href = 'data:application/octet-stream,' + data;
+						// hiddenElement.target = '_blank';
+						// hiddenElement.download = 'myFile.pdf';
+						// hiddenElement.click();
+
+						// document.location = 'data:application/octet-stream,' + encodeURIComponent(data)
+
+						// var pom = document.createElement('a'); 
+						// pom.setAttribute('href', 'data:application/octet-stream,' + data); 
+						// pom.setAttribute('download', 'file_name'); 
+						// pom.click()
 
 						var blob = new Blob([data], {type: "application/octet-stream"});
 						var objectUrl = URL.createObjectURL(blob);
