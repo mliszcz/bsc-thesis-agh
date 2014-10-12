@@ -23,11 +23,9 @@
 %% ------------------------------------------------------------------
 
 start_link() ->
-	?LOG_INFO("dist starting"),
 	gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
 stop() ->
-	?LOG_INFO("shutdown"),
 	gen_server:cast(?SERVER, stop).
 
 %% ------------------------------------------------------------------
@@ -41,17 +39,17 @@ init(_Args) ->
 	% globals:set(capacity, util:get_env(dist_storage_cap)),
 
 	InitialNode = list_to_atom(util:get_env(dist_initial_node)),
-	?LOG_INFO("performing remote scan"),
 	RemoteNodes = remote_scan(sets:add_element(InitialNode, sets:new())),
-	?LOG_INFO("remote scan done!"),
 	broadcast(RemoteNodes, ?DIST_SERVER, {hello, node()}),	% broadcast own name
+
+	?LOG_INFO("discovered nodes: ~p", [RemoteNodes]),
 
 	{ok, RemoteNodes}.
 
 
-handle_call({request, #request{type=create, addr=Addr}=Request},
+handle_call({request, #request{type=create}=Request},
 	From, State) ->
-	?LOG_INFO("creating ~p", [Addr]),
+	?LOG_INFO("received ~p from ~p (~p)", [Request#request.type, Request#request.user, Request#request.addr]),
 	spawn_link(
 		fun() ->
 			case ?AUTH_CALL(node(), Request) of
@@ -68,9 +66,9 @@ handle_call({request, #request{type=create, addr=Addr}=Request},
 	{noreply, State};
 
 
-handle_call({request, #request{type=update, addr=Addr}=Request},
+handle_call({request, #request{type=update}=Request},
 	From, State) ->
-	?LOG_INFO("updating ~p", [Addr]),
+	?LOG_INFO("received ~p from ~p (~p)", [Request#request.type, Request#request.user, Request#request.addr]),
 	spawn_link(
 		fun() ->
 			case ?AUTH_CALL(node(), Request) of
@@ -97,7 +95,7 @@ handle_call({request, #request{type=update, addr=Addr}=Request},
 
 handle_call({request, #request{type=Type}=Request}, From, State)
 	when Type == read ; Type == delete ; Type == find ->
-
+	?LOG_INFO("received ~p from ~p (~p)", [Request#request.type, Request#request.user, Request#request.addr]),
 	spawn_link(
 		fun() ->
 			case ?AUTH_CALL(node(), Request) of
@@ -109,7 +107,7 @@ handle_call({request, #request{type=Type}=Request}, From, State)
 
 
 handle_call({request, #request{type=list}=Request}, From, State) ->
-	?LOG_INFO("listing"),
+	?LOG_INFO("received ~p from ~p (~p)", [Request#request.type, Request#request.user, Request#request.addr]),
 	spawn_link(
 		fun() ->
 			case ?AUTH_CALL(node(), Request) of
@@ -148,7 +146,7 @@ handle_info(_Info, State) ->
 
 
 terminate(Reason, _State) ->
-	?LOG_INFO("terminating dist due to ~p", [Reason]),
+	?LOG_INFO("terminating due to ~p", [Reason]),
 	ok.
 
 

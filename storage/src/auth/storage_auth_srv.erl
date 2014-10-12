@@ -49,7 +49,8 @@ init(_Args) ->
 
 handle_call({authenticate, #request{user=UserId, hmac=Hmac}=Request},
 	From, State) ->
-	?LOG_INFO("authentication call for user ~p (id)", [UserId]),
+	?LOG_INFO("authenticating ~p from ~p (~p)", [Request#request.type, Request#request.user, Request#request.addr]),
+	?LOG_INFO("provided hmac is ~p", [Hmac]),
 
 	spawn_link(
 		fun() ->
@@ -92,8 +93,6 @@ handle_call({authenticate, #request{user=UserId, hmac=Hmac}=Request},
 						{ok, UserEntity} ->
 							ets:insert(State, {UserEntity#user.name, UserEntity#user.secret,
 								Now+?EXPIRATION_TIME}),
-
-							?LOG_INFO("calculating hmac for ~s~p = ~s", [Request#request.user, Request#request.addr, calculate_hmac(Request, UserEntity#user.secret)]),
 
 							Hmac == calculate_hmac(Request, UserEntity#user.secret);
 
@@ -163,6 +162,7 @@ calculate_hmac(
 		list 	-> "GET";
 		find 	-> "HEAD"
 	end,
+	?LOG_INFO("calculating HMAC from ~s using ~s as a secret", [Method++":"++UserId++":/"++Owner++"/"++Path, Secret]),
 	util:binary_to_hex_string(
 		crypto:hmac(sha, Secret, Method++":"++UserId++":/"++Owner++"/"++Path)
 		).

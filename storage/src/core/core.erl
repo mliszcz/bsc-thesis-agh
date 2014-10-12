@@ -10,7 +10,6 @@
 handle_req(
 	#request{
 		type=create,
-		user=IssuerId,
 		addr={UserId, VPath},
 		data=PData
 	}=_Request) ->
@@ -45,7 +44,6 @@ handle_req(
 handle_req(
 	#request{
 	type=update,
-	user=IssuerId,
 	addr={UserId, VPath},
 	data=Data
 	}=_Request) ->
@@ -73,7 +71,6 @@ handle_req(
 handle_req(
 	#request{
 		type=read,
-		user=IssuerId,
 		addr={UserId, VPath}
 	}) ->
 	?LOG_INFO("read ~s", [VPath]),
@@ -88,7 +85,6 @@ handle_req(
 handle_req(
 	#request{
 		type=delete,
-		user=IssuerId,
 		addr={UserId, VPath}
 	}) ->
 	?LOG_INFO("delete ~s", [VPath]),
@@ -112,7 +108,6 @@ handle_req(
 handle_req(
 	#request{
 		type=find,
-		user=Issuer,
 		addr={User, Path}
 	}) ->
 	?LOG_INFO("find ~s", [Path]),

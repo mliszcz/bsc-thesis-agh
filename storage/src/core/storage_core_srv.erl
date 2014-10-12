@@ -26,11 +26,9 @@
 
 start_link() ->
 	util:set_env(core_node_dir, filename:join([util:get_env(core_work_dir), atom_to_list(node())])),
-	?LOG_INFO("starting"), 
 	gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
 stop() ->
-	?LOG_INFO("shutdown"),
 	gen_server:cast(?SERVER, stop).
 
 %% ------------------------------------------------------------------
@@ -79,7 +77,7 @@ handle_call({{request,
 		type=list
 		}=Request}, _ReplyTo}, From, {_Fill, _Quota, _}=State) ->
 
-	?LOG_INFO("core list"),
+	?LOG_INFO("received ~p from ~p (~p)", [Request#request.type, Request#request.user, Request#request.addr]),
 	executor:push(From, Request),
 	{noreply, State};
 
@@ -117,13 +115,9 @@ handle_cast({release, HowMuch}, State) ->
 % 	{noreply, State};
 
 handle_cast({{request,
-	#request{
-		type=_Type,
-		addr={Owner, Path},
-		user=_User
-		}=Request}, ReplyTo}, {_Fill, _Quota, {Exec, Next}}=State) ->
+	#request{}=Request}, ReplyTo}, {_Fill, _Quota, {_Exec, _Next}}=State) ->
 
-	?LOG_INFO("requested ~s", [Path]),
+	?LOG_INFO("received ~p from ~p (~p)", [Request#request.type, Request#request.user, Request#request.addr]),
 
 	%% TODO consider this
 	% NewState = case {Type, metadata:get(User, Path)} of

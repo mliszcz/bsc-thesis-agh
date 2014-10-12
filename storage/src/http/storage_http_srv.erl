@@ -87,6 +87,9 @@ handle_request(Sock) ->
 		_ 									-> handle_other()
 	end,
 
+	{Status, _, _, _} = Response,
+	?LOG_INFO("responding with ~p", [Status]),
+
 	http_utils:send_response(Sock, Response),
 	gen_tcp:close(Sock).
 

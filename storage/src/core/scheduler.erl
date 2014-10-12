@@ -31,11 +31,11 @@ execute(ReplyTo, #request{}=Request) ->
 	?PROC ! {exec, {ReplyTo, Request}}.
 
 
-main({Execs, Jobs, Slots} = Status) ->
+main({Execs, Jobs, Slots} = _Status) ->
 	receive
 		stop -> ets:delete(Execs), ok;
 
-		{exec, {ReplyTo, #request{user = IssuerId, addr = {UserId, VPath}}=Req} = _Msg} ->
+		{exec, {ReplyTo, #request{user = _IssuerId, addr = {UserId, VPath}}=Req} = _Msg} ->
 			?LOG_INFO("scheduler got EXEC"),
 			Priority = -calc_prior(Req),
 			Executor = get_executor(Execs, UserId++VPath),
@@ -64,12 +64,12 @@ ordsets_add({P, X, _} = E, L, [{P0, X0, _}=R0|R]) ->
 	end.
 
 
-continue_jobs({Execs, Jobs, Slots} = Status)
+continue_jobs({_Execs, Jobs, Slots} = Status)
 	when Slots == 0; length(Jobs) == 0 ->
 	?LOG_INFO("nothing to continue"),
 	Status;
 
-continue_jobs({Execs, Jobs, Slots} = Status) ->
+continue_jobs({Execs, Jobs, Slots} = _Status) ->
 	?LOG_INFO("continuing"),
 	{_Prior, NextExec, _Ref} = lists:last(Jobs),
 	NextExec ! continue,
@@ -89,7 +89,7 @@ calc_prior(#request{type=Type}) ->
 
 run(Execs, Name, SchedProc) ->
 	receive
-		{ReplyTo, #request{type=Type} = Request} ->
+		{ReplyTo, #request{type=_Type} = Request} ->
 
 			receive
 				continue -> pass
@@ -97,7 +97,7 @@ run(Execs, Name, SchedProc) ->
 
 			case core:handle_req(Request) of
 				{ok,	_}=Result -> gen_server:reply(ReplyTo, Result);
-				{error,	_} -> pass
+				{error,	Reason} -> ?LOG_ERROR("core call failed with ~p", [Reason])
 			end,
 
 			?LOG_ACTION(Request),
