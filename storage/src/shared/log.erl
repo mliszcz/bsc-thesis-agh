@@ -46,7 +46,7 @@ log_stdout(Level, Msg, Data) ->
 		true ->
 			{_, {H,M,S}} = erlang:localtime(),
 			{Mod, Fun, Arity} = backtrace(3),
-			io:format("[~p] ~2..0b:~2..0b:~2..0b (~p:~p/~p): ", [Level, H, M, S, Mod, Fun, Arity]),
-			io:format(Msg++"~n", Data);
+			io:format("[~p] ~2..0b:~2..0b:~2..0b (~p:~p/~p): "++Msg++"~n", [Level, H, M, S, Mod, Fun, Arity]++Data);
+			% io:format(Msg++"~n", Data);
 		_ -> none
 	end.
