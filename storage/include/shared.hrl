@@ -66,6 +66,7 @@
 	id, 			% list()
 	user_id, 		% list()
 	file_id, 		% list()
+	weight, 		% integer()
 	action_time, 	% integer()
 	action_type 	% integer() = C|R|U|D|L|F
 	}).

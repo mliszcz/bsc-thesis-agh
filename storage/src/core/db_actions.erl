@@ -28,6 +28,7 @@ init(DatabaseLocation) ->
 			id 				TEXT 		NOT NULL PRIMARY KEY,
 			user_id 		TEXT 		NOT NULL,
 			file_id 		TEXT 		NOT NULL,
+			weight 			INTEGER 	NOT NULL,
 			action_time 	INTEGER 	NOT NULL,
 			action_type 	TEXT 		NOT NULL
 		);").
@@ -42,11 +43,12 @@ create(#action{} = Entity) ->
 	NewEntity = Entity#action {id = ?UUID_SERVER:generate()},
 
 	sqlite3:sql_exec(?DBNAME,
-		<<"INSERT INTO actions (id, user_id, file_id, action_time, action_type)
-					VALUES (:uuid, :u_id, :f_id, :time, :type);">>, [
+		<<"INSERT INTO actions (id, user_id, file_id, weight, action_time, action_type)
+					VALUES (:uuid, :u_id, :f_id, :wght, :time, :type);">>, [
 						{':uuid',  NewEntity#action.id},
 						{':u_id',  NewEntity#action.user_id},
 						{':f_id',  NewEntity#action.file_id},
+						{':wght',  NewEntity#action.weight},
 						{':time',  NewEntity#action.action_time},
 						{':type',  NewEntity#action.action_type}
 		]),
@@ -60,6 +62,7 @@ store(#request{type=Type, user=User, addr={Owner, Path}}) ->
 			create(#action{
 				user_id = User,
 				file_id = File#file.id,
+				weight = File#file.bytes,
 				action_time = util:timestamp(),
 				action_type = atom_to_list(Type)
 				});
@@ -73,7 +76,7 @@ get_write_ratio(Name) ->
 	%TODO file sizes shall be taken into consideration
 
 	WriteNum = case sqlite3:sql_exec(?DBNAME,
-		<<"SELECT COUNT(id) from actions
+		<<"SELECT count(*) from actions
 					WHERE user_id = :uid AND
 					(action_type = 'create' OR action_type = 'update');">>, [
 					{':uid', Name}
@@ -83,11 +86,11 @@ get_write_ratio(Name) ->
 	end,
 
 	AllOpsNum = case sqlite3:sql_exec(?DBNAME,
-		<<"SELECT COUNT(id) from actions
+		<<"SELECT count(*) from actions
 					WHERE user_id = :uid;">>, [
 					{':uid', Name}
 		]) of
-		[{columns, _}, {rows, [{Num}]}] -> Num;
+		[{columns, _}, {rows, [{Num2}]}] -> Num2;
 		_ -> 1
 	end,
 
@@ -95,8 +98,14 @@ get_write_ratio(Name) ->
 
 
 get_avg_size(Name) ->
-	% extend actions structure with size/weight field
-	0.
+	case sqlite3:sql_exec(?DBNAME,
+		<<"SELECT avg(weight) from actions
+					WHERE user_id = :uid;">>, [
+					{':uid', Name}
+		]) of
+		[{columns, _}, {rows, [{Num}]}] -> Num;
+		_ -> 0
+	end.
 
 %% ====================================================================
 %% Internal functions
