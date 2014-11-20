@@ -12,7 +12,11 @@
 -export([init/1,
 		 deinit/0,
 		 create/1,
-		 store/1
+		 store/1,
+
+		% statistics
+		 get_write_ratio/1,
+		 get_avg_size/1
 		]).
 
 init(DatabaseLocation) ->
@@ -38,8 +42,8 @@ create(#action{} = Entity) ->
 	NewEntity = Entity#action {id = ?UUID_SERVER:generate()},
 
 	sqlite3:sql_exec(?DBNAME,
-		"INSERT INTO actions (id, user_id, file_id, action_time, action_type)
-					VALUES (:uuid, :u_id, :f_id, :time, :type);", [
+		<<"INSERT INTO actions (id, user_id, file_id, action_time, action_type)
+					VALUES (:uuid, :u_id, :f_id, :time, :type);">>, [
 						{':uuid',  NewEntity#action.id},
 						{':u_id',  NewEntity#action.user_id},
 						{':f_id',  NewEntity#action.file_id},
@@ -62,6 +66,37 @@ store(#request{type=Type, user=User, addr={Owner, Path}}) ->
 		_ ->
 			pass
 	end.
+
+
+get_write_ratio(Name) ->
+
+	%TODO file sizes shall be taken into consideration
+
+	WriteNum = case sqlite3:sql_exec(?DBNAME,
+		<<"SELECT COUNT(id) from actions
+					WHERE user_id = :uid AND
+					(action_type = 'create' OR action_type = 'update');">>, [
+					{':uid', Name}
+		]) of
+		[{columns, _}, {rows, [{Num}]}] -> Num;
+		_ -> 0
+	end,
+
+	AllOpsNum = case sqlite3:sql_exec(?DBNAME,
+		<<"SELECT COUNT(id) from actions
+					WHERE user_id = :uid;">>, [
+					{':uid', Name}
+		]) of
+		[{columns, _}, {rows, [{Num}]}] -> Num;
+		_ -> 1
+	end,
+
+	WriteNum/AllOpsNum.
+
+
+get_avg_size(Name) ->
+	% extend actions structure with size/weight field
+	0.
 
 %% ====================================================================
 %% Internal functions
