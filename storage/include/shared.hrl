@@ -45,38 +45,38 @@
 
 -record(file, {
 	id, 			% list()
-	owner, 			% list()
-	vpath, 			% list()
-	bytes, 			% integer()
-	access_mode, 	% integer()
-	create_time 	% integer()
+	owner 			:: nonempty_string(), 			% list()
+	vpath 			:: nonempty_string(), 			% list()
+	bytes 			:: integer(), 					% integer()
+	access_mode 	:: integer(), 					% integer()
+	create_time 	:: integer() 					% integer()
 	}).
 
 
 -record(user, {
 	id, 			% list()
-	name,			% list()
-	secret, 		% list()
-	create_time, 	% integer()
+	name			:: nonempty_string(), 			% list()
+	secret 			:: nonempty_string(), 			% list()
+	create_time 	:: integer(), 					% integer()
 	storage_grant 	% integer()
 	}).
 
 
 -record(action, {
 	id, 			% list()
-	user_id, 		% list()
-	file_id, 		% list()
-	weight, 		% integer()
-	action_time, 	% integer()
-	action_type 	% integer() = C|R|U|D|L|F
+	user_id 		:: nonempty_string(), 	% list()
+	file_id 		:: nonempty_string(), 	% list()
+	weight 			:: integer(), 			% integer()
+	action_time 	:: integer(), 			% integer()
+	action_type 	:: nonempty_string() 	% "create" | "read" | "update" | "delete" | "list" | "find" % integer() = C|R|U|D|L|F
 	}).
 
 
 -record(request, {
-	type, 					% create | read | update | delete | list | find
-	user, 					% list()
-	addr = {none, none}, 	% {owner, vpath}
-	hmac = none, 			% list()
-	data = none, 			% binary()
-	opts = none 			% -unused-
+	type 					:: 'create' | 'read' | 'update' | 'delete' | 'list' | 'find', 		% create | read | update | delete | list | find
+	user 					:: nonempty_string(), 									% list()
+	addr = {none, none} 	:: { nonempty_string(), nonempty_string() }, 			% {owner, vpath}
+	hmac = none 			:: string(), 											% list()
+	data = none 			:: binary(), 											% binary()
+	opts = none 			:: term() 												% -unused-
 	}).

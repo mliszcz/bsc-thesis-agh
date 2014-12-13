@@ -77,13 +77,16 @@ continue_jobs({Execs, Jobs, Slots} = _Status) ->
 
 
 calc_prior(#request{type=Type}) ->
-	case Type of
+
+	TypeMul = case Type of
 		find -> 0;
 		read -> 1;
 		create -> 2;
 		update -> 3;
 		_ -> 4
-	end.
+	end,
+
+	TypeMul.
 
 %% executors
 
