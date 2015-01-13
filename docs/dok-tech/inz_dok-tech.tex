@@ -1,0 +1,54 @@
+
+\documentclass[polish,12pt]{aghthesis}
+
+\usepackage[utf8]{inputenc}
+\usepackage{url}
+\usepackage{hyperref}
+\usepackage{pgffor}
+
+\usepackage{natbib}
+\usepackage{keyval}
+\usepackage{usebib}
+\bibinput{bibliografia}
+
+\usepackage{listings}
+\lstset{language=erlang, tabsize=4, frame=tb, numbers=left}
+
+\graphicspath{{images/}}
+
+\renewcommand*{\figureautorefname}{Rys.}
+\renewcommand*{\subsectionautorefname}{rozdziale}
+
+\author{Michał Liszcz, Wojciech Baszczyk}
+
+\title{Metody optymalizacji wykorzystywania zasobów storage'owych z uwzględnieniem wymagań i profilu użytkownika}
+
+\supervisor{dr inż.\ Włodzimierz Funika}
+
+\date{2015}
+
+% Szablon przystosowany jest do druku dwustronnego
+\begin{document}
+
+\maketitle
+
+\tableofcontents
+\newpage
+
+\foreach \secf in {
+	section1.tex,
+	section2.tex,
+	section3.tex,
+	section4.tex} {
+	\input{sections/\secf}
+	\newpage
+}
+
+\nocite{genetic-wiki, otp-www}
+
+\bibliography{bibliografia}
+\newpage
+
+\listoffigures
+
+\end{document}
